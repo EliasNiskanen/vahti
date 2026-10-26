@@ -15,7 +15,7 @@ Nämä ovat GitHubin asetuksia, joita ei voi tallentaa koodiin. Tee ne heti.
 - [ ] Private vulnerability reporting: Enable
 - [ ] Dependabot alerts ja Dependabot security updates: Enable
 - [ ] Secret scanning ja Push protection: Enable
-- [ ] Code scanning: käytä repositorion `codeql.yml`-tiedostoa (Advanced setup)
+- [ ] Code scanning: käytä repositorion `codeql.yml`-tiedostoa (Advanced setup). CodeQL-skannaus on ilmainen julkisille repositorioille, joten se käynnistyy automaattisesti vasta, kun repositorio muutetaan julkiseksi. Yksityisessä repositoriossa se vaatii maksullisen GitHub Code Security -lisäosan. Jos sinulla on se, aseta repositorion muuttuja `ENABLE_CODEQL` arvoon `true` (Settings → Secrets and variables → Actions → Variables).
 
 **Pääkehityshaaran suojaus** (Settings → Rules → Rulesets → New branch ruleset, kohde `main`)
 - [ ] Require a pull request before merging

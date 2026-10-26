@@ -71,7 +71,7 @@ func (s *Server) apiSetup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := ValidatePassword(in.Password); err != nil {
-		writeErr(w, http.StatusBadRequest, err.Error())
+		writeErr(w, http.StatusBadRequest, PasswordMessage(err))
 		return
 	}
 	h, err := HashPassword(in.Password)
@@ -134,7 +134,7 @@ func (s *Server) apiPassword(w http.ResponseWriter, r *http.Request, tok string)
 		return
 	}
 	if err := ValidatePassword(in.Next); err != nil {
-		writeErr(w, http.StatusBadRequest, err.Error())
+		writeErr(w, http.StatusBadRequest, PasswordMessage(err))
 		return
 	}
 	h, err := HashPassword(in.Next)

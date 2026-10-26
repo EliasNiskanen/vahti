@@ -68,16 +68,29 @@ func VerifyPassword(encoded, pw string) bool {
 	return subtle.ConstantTimeCompare(got, want) == 1
 }
 
+// Password policy errors. PasswordMessage turns them into text for the user.
+var (
+	ErrPasswordShort = errors.New("password shorter than 12 characters")
+	ErrPasswordLong  = errors.New("password longer than 256 bytes")
+)
+
 // ValidatePassword enforces the password policy.
 func ValidatePassword(pw string) error {
-	n := len([]rune(pw))
-	if n < 12 {
-		return errors.New("Salasanassa pitää olla vähintään 12 merkkiä.")
+	if len([]rune(pw)) < 12 {
+		return ErrPasswordShort
 	}
 	if len(pw) > 256 {
-		return errors.New("Salasana on liian pitkä (enintään 256 merkkiä).")
+		return ErrPasswordLong
 	}
 	return nil
+}
+
+// PasswordMessage explains a ValidatePassword error in Finnish.
+func PasswordMessage(err error) string {
+	if errors.Is(err, ErrPasswordLong) {
+		return "Salasana on liian pitkä (enintään 256 merkkiä)."
+	}
+	return "Salasanassa pitää olla vähintään 12 merkkiä."
 }
 
 // NewSetupCode returns a human-friendly one-time code and its hash.

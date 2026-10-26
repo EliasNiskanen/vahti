@@ -12,6 +12,10 @@ permissions:
 
 jobs:
   analyze:
+    # Code scanning is free for public repositories. Private repositories need
+    # GitHub Code Security, so the scan runs only once the repository is public
+    # (or when the repository variable ENABLE_CODEQL is set to "true").
+    if: ${{ vars.ENABLE_CODEQL == 'true' || (github.event.repository != null && !github.event.repository.private) }}
     runs-on: ubuntu-latest
     permissions:
       security-events: write

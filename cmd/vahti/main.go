@@ -547,7 +547,8 @@ func cmdResetAdmin(args []string) error {
 	}
 	lk, err := lock.Acquire(cfg.DataDir)
 	if errors.Is(err, lock.ErrBusy) {
-		return errors.New("Vahti on käynnissä. Pysäytä se ensin: sudo systemctl stop vahti")
+		fmt.Fprintln(os.Stderr, "Vahti on käynnissä. Pysäytä se ensin: sudo systemctl stop vahti")
+		return err
 	}
 	if err != nil {
 		return err

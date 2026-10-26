@@ -115,9 +115,3 @@ func (c *cache) put(key string, m *dns.Msg) {
 	}
 	c.data[key] = cacheEntry{msg: m.Copy(), stored: now, expires: now.Add(time.Duration(ttl) * time.Second)}
 }
-
-func (c *cache) len() int {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return len(c.data)
-}
