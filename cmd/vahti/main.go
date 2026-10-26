@@ -14,6 +14,7 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -43,7 +44,8 @@ func usage() {
 Käyttö:
   vahti [run] [-config %s]   käynnistä palvelu
   vahti demo [-dir ./vahti-demo]          esittelytila omalle koneelle (http://127.0.0.1:8080)
-  vahti update-lists [-config ...]        lataa estolistat (ainoa toiminto, joka hakee dataa verkosta)
+  vahti local [-router 192.168.1.1]       kokeellinen tila: suodattaa vain tämän koneen liikenteen
+  vahti update-lists [-config ...|-local] lataa estolistat (ainoa toiminto, joka hakee dataa verkosta)
   vahti reset-admin [-config ...]         unohda salasana ja luo uusi käyttöönottokoodi
   vahti version
 `, version, defaultConfig)
@@ -59,9 +61,11 @@ func main() {
 	var err error
 	switch cmd {
 	case "run":
-		err = cmdRun(args, false)
+		err = cmdRun(args, modeService)
 	case "demo":
-		err = cmdRun(args, true)
+		err = cmdRun(args, modeDemo)
+	case "local":
+		err = cmdRun(args, modeLocal)
 	case "update-lists":
 		err = cmdUpdateLists(args)
 	case "reset-admin":
@@ -111,11 +115,56 @@ func buildDB(cfg config.Config, demoMode bool) *intel.DB {
 	return db
 }
 
-func cmdRun(args []string, demoMode bool) error {
+type runMode int
+
+const (
+	modeService runMode = iota // Linux service: the whole home network
+	modeDemo                   // simulated traffic, nothing leaves the machine
+	modeLocal                  // experimental: filters only this computer (Windows, macOS, Linux desktop)
+)
+
+// localDataDir is where local mode keeps its files: %LOCALAPPDATA%\Vahti on Windows.
+func localDataDir() string {
+	if d, err := os.UserCacheDir(); err == nil {
+		return filepath.Join(d, "Vahti")
+	}
+	return "vahti-data"
+}
+
+// localConfig serves only this computer: DNS and the web interface listen on
+// loopback, so nothing is reachable from the network.
+func localConfig(dir, webAddr, router string) (config.Config, error) {
+	cfg := config.Default()
+	cfg.DataDir = dir
+	cfg.DNS.Listen = []string{"127.0.0.1:53", "[::1]:53"}
+	cfg.DNS.AllowedClients = []string{"127.0.0.0/8", "::1/128"}
+	cfg.Web.AllowedClients = []string{"127.0.0.0/8", "::1/128"}
+	cfg.Web.Listen = webAddr
+	cfg.Web.RedirectListen = ""
+	cfg.Web.TLS = false
+	if router != "" {
+		cfg.DNS.LocalResolver = net.JoinHostPort(router, "53")
+	}
+	return cfg, cfg.Validate()
+}
+
+func cmdRun(args []string, mode runMode) error {
+	demoMode := mode == modeDemo
 	fs := flag.NewFlagSet("run", flag.ExitOnError)
 	var cfg config.Config
 	var err error
-	if demoMode {
+	if mode == modeLocal {
+		dir := fs.String("dir", localDataDir(), "datakansio")
+		webAddr := fs.String("web", "127.0.0.1:8080", "käyttöliittymän osoite (vain tämä kone)")
+		router := fs.String("router", "", "reitittimen IP-osoite kotiverkon laitenimiä varten, esim. 192.168.1.1")
+		if err := fs.Parse(args); err != nil {
+			return err
+		}
+		cfg, err = localConfig(*dir, *webAddr, *router)
+		if err != nil {
+			return err
+		}
+	} else if demoMode {
 		dir := fs.String("dir", "./vahti-demo", "esittelytilan datakansio")
 		webAddr := fs.String("web", "127.0.0.1:8080", "käyttöliittymän osoite")
 		dnsAddr := fs.String("dns", "127.0.0.1:5353", "nimipalvelimen osoite (esim. dig @127.0.0.1 -p 5353)")
@@ -173,7 +222,7 @@ func cmdRun(args []string, demoMode bool) error {
 			eng.SetAdmin(engine.Admin{SetupCodeHash: hash})
 		}
 		slog.Info("VAHTI IS NOT SET UP YET. Open the web interface and enter this one-time setup code", "code", code, "file", setupPath)
-		if demoMode {
+		if mode != modeService {
 			fmt.Fprintf(os.Stderr, "\n  Avaa http://%s ja syötä käyttöönottokoodi: %s\n\n", cfg.Web.Listen, code)
 		}
 	}
@@ -201,14 +250,21 @@ func cmdRun(args []string, demoMode bool) error {
 		return err
 	}
 	if err := dnsSrv.Start(cfg.DNS.Listen); err != nil {
-		return err
+		if mode != modeLocal {
+			return err
+		}
+		// IPv6 loopback may be disabled; IPv4 alone still works.
+		slog.Warn("could not listen on all addresses; trying IPv4 only", "err", err)
+		if err2 := dnsSrv.Start(cfg.DNS.Listen[:1]); err2 != nil {
+			return fmt.Errorf("%w\nPortti 53 on luultavasti toisen ohjelman käytössä (esim. Windowsin Internet-yhteyden jakaminen, Hyper-V tai toinen DNS-ohjelma). Tarkista PowerShellissä: Get-NetUDPEndpoint -LocalPort 53", err2)
+		}
 	}
 	defer dnsSrv.Shutdown()
 	slog.Info("dns listening", "addrs", dnsSrv.Addrs())
 
 	webSrv, err := web.New(web.Config{
 		AllowedClients: cfg.Web.AllowedClients, Hostnames: cfg.Web.Hostnames, TLS: cfg.Web.TLS, CertFP: fp,
-		SetupCodePath: setupPath, Demo: demoMode, Version: version, Upstreams: cfg.DNS.Upstreams,
+		SetupCodePath: setupPath, Demo: demoMode, Local: mode == modeLocal, Version: version, Upstreams: cfg.DNS.Upstreams,
 	}, eng)
 	if err != nil {
 		return err
@@ -238,7 +294,7 @@ func cmdRun(args []string, demoMode bool) error {
 	if cfg.Web.TLS {
 		scheme = "https"
 	}
-	if demoMode {
+	if mode != modeService {
 		slog.Info("web interface listening", "url", "http://"+cfg.Web.Listen)
 	} else {
 		slog.Info("web interface listening", "url", scheme+"://"+cfg.Web.Hostnames[0], "addr", cfg.Web.Listen)
@@ -284,6 +340,25 @@ func cmdRun(args []string, demoMode bool) error {
 		}
 	}()
 
+	// Reload blocklists when their files change (Windows has no SIGHUP).
+	go func() {
+		last := listsModTime(cfg)
+		t := time.NewTicker(30 * time.Second)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+				if m := listsModTime(cfg); !m.Equal(last) {
+					last = m
+					slog.Info("blocklists changed; reloading")
+					db.Replace(buildDB(cfg, demoMode))
+				}
+			}
+		}
+	}()
+
 	// systemd watchdog: only report healthy when DNS actually answers.
 	if iv := sdnotify.WatchdogInterval(); iv > 0 {
 		addr := selfCheckAddr(cfg.DNS.Listen[0])
@@ -309,6 +384,10 @@ func cmdRun(args []string, demoMode bool) error {
 		demo.Prepare(eng)
 		go demo.Run(ctx, dnsSrv, 160)
 	}
+	if mode == modeLocal {
+		nameThisComputer(eng)
+		fmt.Fprintf(os.Stderr, "\n  Vahti suodattaa tämän koneen liikenteen, kun koneen DNS osoittaa osoitteeseen 127.0.0.1.\n  Hallinta: http://%s   Lopetus: Ctrl+C (palauta sitä ennen DNS-asetus)\n\n", cfg.Web.Listen)
+	}
 	_ = sdnotify.Notify("READY=1")
 
 	select {
@@ -328,6 +407,31 @@ func cmdRun(args []string, demoMode bool) error {
 	}
 	dnsSrv.Shutdown()
 	return saveState(eng, statePath, true)
+}
+
+// nameThisComputer gives the loopback clients a friendly name in local mode.
+func nameThisComputer(eng *engine.Engine) {
+	name, kind := "Tämä tietokone", "computer"
+	for _, ip := range []string{"127.0.0.1", "::1"} {
+		id := eng.Identify(netip.MustParseAddr(ip), "")
+		if d, ok := eng.Device(id); ok && strings.HasPrefix(d.Name, "Vahti-laite") {
+			n := name
+			if ip == "::1" {
+				n = name + " (IPv6)"
+			}
+			_, _ = eng.UpdateDevice(id, engine.DeviceUpdate{Name: &n, Kind: &kind})
+		}
+	}
+}
+
+func listsModTime(cfg config.Config) time.Time {
+	var latest time.Time
+	for _, l := range cfg.Lists {
+		if fi, err := os.Stat(filepath.Join(cfg.DataDir, "lists", l.Name+".txt")); err == nil && fi.ModTime().After(latest) {
+			latest = fi.ModTime()
+		}
+	}
+	return latest
 }
 
 func saveState(eng *engine.Engine, path string, force bool) error {
@@ -357,7 +461,18 @@ func selfCheckAddr(listen string) string {
 
 func cmdUpdateLists(args []string) error {
 	fs := flag.NewFlagSet("update-lists", flag.ExitOnError)
-	cfg, err := loadConfig(fs, args)
+	local := fs.Bool("local", false, "päivitä paikallisen tilan (vahti local) listat")
+	path := fs.String("config", defaultConfig, "asetustiedosto")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	var cfg config.Config
+	var err error
+	if *local {
+		cfg, err = localConfig(localDataDir(), "127.0.0.1:8080", "")
+	} else {
+		cfg, _, err = config.Load(*path)
+	}
 	if err != nil {
 		return err
 	}
@@ -378,7 +493,11 @@ func cmdUpdateLists(args []string) error {
 		lock.MatchOwner(cfg.DataDir, filepath.Join(dir, l.Name+".txt"))
 		slog.Info("list updated", "list", l.Name, "domains", n)
 	}
-	fmt.Println("Valmis. Ota listat käyttöön: sudo systemctl reload vahti")
+	if *local {
+		fmt.Println("Valmis. Vahti ottaa listat käyttöön itsestään puolen minuutin kuluessa.")
+	} else {
+		fmt.Println("Valmis. Ota listat käyttöön: sudo systemctl reload vahti")
+	}
 	if failed > 0 {
 		return fmt.Errorf("%d list(s) failed", failed)
 	}

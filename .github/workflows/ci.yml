@@ -36,6 +36,14 @@ jobs:
           go test -run=^$ -fuzz=FuzzParseList -fuzztime=20s ./internal/intel
       - name: Shell scripts
         run: shellcheck deploy/*.sh
+      - name: PowerShell scripts
+        shell: pwsh
+        run: |
+          foreach ($f in Get-ChildItem deploy/windows/*.ps1) {
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$null, [ref]$errors) | Out-Null
+            if ($errors) { $errors; exit 1 }
+          }
 
   govulncheck:
     runs-on: ubuntu-latest
@@ -52,6 +60,7 @@ jobs:
           - { goarch: arm64 }
           - { goarch: arm, goarm: "7" }
           - { goarch: amd64 }
+          - { goarch: amd64, goos: windows }
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -62,7 +71,7 @@ jobs:
       - name: Build
         env:
           CGO_ENABLED: "0"
-          GOOS: linux
+          GOOS: ${{ matrix.goos || 'linux' }}
           GOARCH: ${{ matrix.goarch }}
           GOARM: ${{ matrix.goarm }}
         run: go build -trimpath -ldflags "-s -w" -o vahti ./cmd/vahti
