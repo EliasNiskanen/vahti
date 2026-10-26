@@ -6,7 +6,11 @@ Kaikki merkittävät muutokset kirjataan tähän tiedostoon. Muoto noudattaa [Ke
 
 ### Lisätty
 - **Kokeellinen Windows-tila** (`vahti local`): suodattaa sen tietokoneen liikenteen, jolla Vahti on käynnissä. Kuuntelee vain tätä konetta (127.0.0.1 ja ::1) ja siirtyy pelkkään IPv4:ään, jos IPv6 ei ole käytössä.
-- PowerShell-skriptit `kayta-vahtia.ps1` ja `palauta-dns.ps1`, jotka ohjaavat Windowsin nimikyselyt Vahdille ja palauttavat alkuperäiset asetukset varmuuskopiosta.
+- **DNS-asetusten automaattinen palautus Windowsissa:** `kaynnista-vahti.ps1` käynnistää Vahdin ja vartijan, joka ohjaa nimikyselyt Vahdille ja palauttaa alkuperäiset asetukset heti, kun Vahti suljetaan, kaatuu tai lakkaa vastaamasta. Jos kone sammuu kesken, ajastettu tehtävä palauttaa asetukset seuraavassa käynnistyksessä.
+- `tarkista-dns.ps1` näyttää, ovatko koneen DNS-asetukset normaalit. Ei vaadi järjestelmänvalvojan oikeuksia.
+- `palauta-dns.ps1` palauttaa asetukset käsin, myös ilman varmuuskopiota. Käsin asetetut DNS-osoitteet säilyvät.
+- Varmuuskopio ja palautusskripti tallennetaan kansioon `%ProgramData%\Vahti`, jota vain järjestelmä ja järjestelmänvalvojat voivat muuttaa.
+- Windows-skriptien palautuslogiikalle testi simuloiduilla verkkosovittimilla CI:hin.
 - `vahti update-lists -local` lataa estolistat Windows-tilaa varten.
 - `-router`-valinta kotiverkon laitenimiä (esim. `tulostin.lan`) varten Windows-tilassa.
 - Estolistat otetaan käyttöön automaattisesti, kun niiden tiedostot muuttuvat. Uudelleenkäynnistystä ei tarvita.

@@ -190,7 +190,7 @@ function render() {
   const paused = o.pausedUntil && new Date(o.pausedUntil) > new Date();
   app.append(
     S.session.demo ? h('div', {class: 'demo-band'}, 'Esittelytila: liikenne on simuloitua, mutta kaikki säännöt ja päätökset toimivat oikean moottorin läpi.') : null,
-    S.session.local ? h('div', {class: 'demo-band'}, 'Kokeellinen paikallinen tila: Vahti suodattaa vain tämän tietokoneen liikenteen. Palauta DNS-asetus ennen kuin suljet Vahdin.') : null,
+    S.session.local ? h('div', {class: 'demo-band'}, 'Kokeellinen paikallinen tila: Vahti suodattaa vain tämän tietokoneen liikenteen. DNS-asetukset palautuvat automaattisesti, kun Vahti suljetaan.') : null,
     h('header', {class: 'top'}, h('div', {class: 'wrap'},
       h('div', {class: 'bar'},
         h('div', {class: 'brand'}, shield(), 'Vahti'),

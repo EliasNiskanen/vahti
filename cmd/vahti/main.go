@@ -386,7 +386,7 @@ func cmdRun(args []string, mode runMode) error {
 	}
 	if mode == modeLocal {
 		nameThisComputer(eng)
-		fmt.Fprintf(os.Stderr, "\n  Vahti suodattaa tämän koneen liikenteen, kun koneen DNS osoittaa osoitteeseen 127.0.0.1.\n  Hallinta: http://%s   Lopetus: Ctrl+C (palauta sitä ennen DNS-asetus)\n\n", cfg.Web.Listen)
+		fmt.Fprintf(os.Stderr, "\n  Vahti on käynnissä. Hallinta: http://%s\n  Lopetus: sulje tämä ikkuna tai paina Ctrl+C.\n  Jos käynnistit Vahdin skriptillä kaynnista-vahti.ps1, DNS-asetukset palautuvat automaattisesti.\n\n", cfg.Web.Listen)
 	}
 	_ = sdnotify.Notify("READY=1")
 

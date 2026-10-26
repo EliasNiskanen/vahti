@@ -81,30 +81,23 @@ Avaa http://127.0.0.1:8080 ja syötä päätteeseen tulostunut käyttöönottoko
 Kokeellinen Windows-tila suodattaa vain sen tietokoneen liikenteen, jolla Vahti on käynnissä. Toisin kuin esittelytilassa, näet oman koneesi oikean liikenteen: esimerkiksi Windowsin oman telemetrian sekä sivujen mainos- ja analytiikkapalvelut. Muiden kodin laitteiden suojaamiseen tarvitaan Linux-laite (ks. [Laitteisto](#laitteisto)).
 
 1. Lataa [julkaisusivulta](https://github.com/EliasNiskanen/vahti/releases) tiedosto `vahti_<versio>_windows_amd64.zip` ja pura se esimerkiksi kansioon `C:\Vahti`.
-2. Avaa PowerShell kansiossa (Shift + hiiren oikea painike kansion tyhjässä kohdassa → *Avaa PowerShell-ikkuna tässä*) ja käynnistä Vahti. Pidä ikkuna auki.
+2. Avaa PowerShell kansiossa (Shift + hiiren oikea painike kansion tyhjässä kohdassa → *Avaa PowerShell-ikkuna tässä*) ja käynnistä Vahti:
    ```powershell
-   .\vahti.exe local
+   powershell -ExecutionPolicy Bypass -File .\kaynnista-vahti.ps1
    ```
-3. Avaa selaimessa http://127.0.0.1:8080, syötä PowerShelliin tulostunut käyttöönottokoodi ja aseta salasana.
-4. Lataa estolistat toisessa PowerShell-ikkunassa. Vahti ottaa ne käyttöön puolen minuutin kuluessa.
-   ```powershell
-   .\vahti.exe update-lists -local
-   ```
-5. Avaa PowerShell **järjestelmänvalvojana** ja ohjaa koneen nimikyselyt Vahdille. Skripti tarkistaa ensin, että Vahti vastaa, ja tallentaa nykyiset DNS-asetuksesi.
-   ```powershell
-   cd C:\Vahti
-   powershell -ExecutionPolicy Bypass -File .\kayta-vahtia.ps1
-   ```
-6. Kytke Chromen tai Edgen asetuksista *Käytä suojattua DNS:ää* pois, muuten selain ohittaa Vahdin. Firefoxissa Vahti hoitaa tämän automaattisesti.
+   Vahti avautuu omaan ikkunaansa, ja Windows kysyy lupaa DNS-asetusten muuttamiseen. Hyväksy.
+3. Avaa selaimessa http://127.0.0.1:8080, syötä Vahdin ikkunaan tulostunut käyttöönottokoodi ja aseta salasana.
+4. Lataa estolistat: `.\vahti.exe update-lists -local`
+5. Kytke Chromen tai Edgen asetuksista *Käytä suojattua DNS:ää* pois, muuten selain ohittaa Vahdin.
 
-Vahdissa näkyy nyt laite *Tämä tietokone* ja sen oikea liikenne.
+**Lopetus:** sulje Vahdin ikkuna. **DNS-asetukset palautetaan automaattisesti**, myös jos Vahti kaatuu. Jos kone sammuu kesken, asetukset palautetaan seuraavassa käynnistyksessä.
 
-> **Tärkeää:** Palauta DNS-asetukset aina ennen kuin suljet Vahdin. Jos Vahti ei ole käynnissä mutta koneen DNS osoittaa siihen, netti lakkaa toimimasta. Sama komento korjaa tilanteen, jos niin käy vahingossa (aja järjestelmänvalvojana):
-> ```powershell
-> powershell -ExecutionPolicy Bypass -File .\palauta-dns.ps1
-> ```
+**Tarkistus:** näet milloin tahansa, ovatko asetukset normaalit, komennolla
+```powershell
+powershell -ExecutionPolicy Bypass -File .\tarkista-dns.ps1
+```
 
-Lisätietoja ja vianetsintä: [docs/windows.md](docs/windows.md).
+Lisätietoja, vianetsintä ja palautuksen toimintaperiaate: [docs/windows.md](docs/windows.md).
 
 ## Asennus
 
@@ -155,7 +148,7 @@ Vahti toimii vain, jos laitteet kysyvät nimet siltä. Siksi käyttöönotto muu
 1. **Tarkista Vahti.** Linuxissa: `systemctl status vahti`. Windowsissa: onko `vahti.exe local` -ikkuna auki?
 2. **Palauta asetukset, jos Vahtia ei saa heti toimimaan:**
    - **Koko koti (reititin):** avaa reitittimen hallinta IP-osoitteella (esim. http://192.168.1.1), mene DHCP- tai LAN-asetuksiin ja palauta DNS-palvelimeksi *automaattinen* tai ylös kirjoittamasi alkuperäiset osoitteet. Kytke laitteiden wifi hetkeksi pois ja takaisin, jotta ne saavat uuden asetuksen.
-   - **Windows-tila:** aja järjestelmänvalvojana `powershell -ExecutionPolicy Bypass -File .\palauta-dns.ps1`. Jos skriptiä ei ole käsillä: *Asetukset → Verkko ja Internet → Wi-Fi tai Ethernet → yhteyden ominaisuudet → DNS-palvelimen määritys → Muokkaa → Automaattinen (DHCP)*.
+   - **Windows-tila:** asetukset palautuvat yleensä itsestään, kun Vahti suljetaan. Tarkista tila komennolla `tarkista-dns.ps1`. Jos ne eivät ole palautuneet, aja järjestelmänvalvojana `powershell -ExecutionPolicy Bypass -File .\palauta-dns.ps1`. Jos skriptiä ei ole käsillä: *Asetukset → Verkko ja Internet → Wi-Fi tai Ethernet → yhteyden ominaisuudet → DNS-palvelimen määritys → Muokkaa → Automaattinen (DHCP)*.
 
 **Vahdin poistaminen:** palauta DNS-asetukset aina *ennen* kuin poistat Vahdin tai sammutat laitteen pysyvästi. Poisto-ohjelma (`uninstall.sh`) muistuttaa tästä.
 

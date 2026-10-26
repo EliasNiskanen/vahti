@@ -45,7 +45,7 @@ jobs:
           name="vahti_${VERSION}_windows_amd64"
           mkdir -p "build/$name"
           CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o "build/$name/vahti.exe" ./cmd/vahti
-          cp deploy/windows/*.ps1 docs/windows.md README.md LICENSE "build/$name/"
+          cp deploy/windows/*.ps1 deploy/windows/*.psm1 docs/windows.md README.md LICENSE "build/$name/"
           (cd build && zip -qrX "../dist/$name.zip" "$name")
           go run github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.9.0 mod -licenses -json -output dist/vahti_${VERSION}_sbom.cdx.json
           (cd dist && sha256sum * > SHA256SUMS)
