@@ -1,0 +1,57 @@
+[Unit]
+Description=Vahti - kotiverkon yksityisyyssuodatin
+Documentation=file:///usr/local/share/doc/vahti/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+NotifyAccess=main
+User=vahti
+Group=vahti
+ExecStart=/usr/local/bin/vahti run -config /etc/vahti/config.json
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=2
+# Restarted if DNS stops answering for 30 seconds.
+WatchdogSec=30
+TimeoutStartSec=30
+
+# Only privilege: binding ports 53, 80 and 443. Never runs as root.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=yes
+
+# Writable: /var/lib/vahti only. Everything else is read-only or hidden.
+StateDirectory=vahti
+StateDirectoryMode=0700
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+DevicePolicy=closed
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+RemoveIPC=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged
+SystemCallErrorNumber=EPERM
+UMask=0077
+LimitNOFILE=8192
+MemoryMax=512M
+TasksMax=256
+
+[Install]
+WantedBy=multi-user.target

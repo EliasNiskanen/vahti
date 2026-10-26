@@ -1,0 +1,60 @@
+{
+  "domains": {
+    "doubleclick.net":                {"category": "ads",       "owner": "Google"},
+    "googlesyndication.com":          {"category": "ads",       "owner": "Google"},
+    "googleadservices.com":           {"category": "ads",       "owner": "Google"},
+    "adservice.google.com":           {"category": "ads",       "owner": "Google"},
+    "google-analytics.com":           {"category": "analytics", "owner": "Google"},
+    "googletagmanager.com":           {"category": "analytics", "owner": "Google"},
+    "app-measurement.com":            {"category": "analytics", "owner": "Google", "note": "Firebase Analytics -kirjasto mobiilisovelluksissa"},
+    "firebaselogging-pa.googleapis.com": {"category": "telemetry", "owner": "Google"},
+    "crashlytics.com":                {"category": "telemetry", "owner": "Google", "note": "Sovellusten kaatumis- ja käyttöraportit"},
+
+    "connect.facebook.net":           {"category": "social",    "owner": "Meta", "note": "Facebook-pikseli ja SDK, jotka upotetaan muiden yritysten sivuille ja sovelluksiin"},
+    "pixel.facebook.com":             {"category": "social",    "owner": "Meta"},
+    "an.facebook.com":                {"category": "ads",       "owner": "Meta", "note": "Audience Network -mainosverkko"},
+
+    "amazon-adsystem.com":            {"category": "ads",       "owner": "Amazon"},
+    "device-metrics-us.amazon.com":   {"category": "telemetry", "owner": "Amazon"},
+    "device-metrics-us-2.amazon.com": {"category": "telemetry", "owner": "Amazon"},
+
+    "vortex.data.microsoft.com":      {"category": "telemetry", "owner": "Microsoft", "note": "Windowsin diagnostiikkadata"},
+    "watson.telemetry.microsoft.com": {"category": "telemetry", "owner": "Microsoft"},
+    "bat.bing.com":                   {"category": "analytics", "owner": "Microsoft", "note": "Microsoft Advertisingin konversioseuranta"},
+    "clarity.ms":                     {"category": "analytics", "owner": "Microsoft", "note": "Istuntojen tallennus ja lämpökartat"},
+    "adnxs.com":                      {"category": "ads",       "owner": "Microsoft (Xandr)"},
+
+    "analytics.tiktok.com":           {"category": "analytics", "owner": "ByteDance (TikTok)", "note": "TikTok-pikseli"},
+    "ads-twitter.com":                {"category": "ads",       "owner": "X Corp."},
+    "static.ads-twitter.com":         {"category": "ads",       "owner": "X Corp."},
+
+    "samsungads.com":                 {"category": "ads",       "owner": "Samsung"},
+    "samsungacr.com":                 {"category": "telemetry", "owner": "Samsung", "note": "Television katselutunnistus (ACR): tunnistaa ruudulla näkyvän sisällön"},
+    "lgsmartad.com":                  {"category": "ads",       "owner": "LG Electronics"},
+    "tracking.miui.com":              {"category": "telemetry", "owner": "Xiaomi"},
+    "data.mistat.xiaomi.com":         {"category": "telemetry", "owner": "Xiaomi"},
+
+    "scorecardresearch.com":          {"category": "analytics", "owner": "Comscore"},
+    "criteo.com":                     {"category": "ads",       "owner": "Criteo", "note": "Uudelleenkohdennettu mainonta selatuista tuotteista"},
+    "criteo.net":                     {"category": "ads",       "owner": "Criteo"},
+    "taboola.com":                    {"category": "ads",       "owner": "Taboola"},
+    "outbrain.com":                   {"category": "ads",       "owner": "Outbrain"},
+    "hotjar.com":                     {"category": "analytics", "owner": "Hotjar", "note": "Istuntojen tallennus ja lämpökartat"},
+    "mixpanel.com":                   {"category": "analytics", "owner": "Mixpanel"},
+    "segment.io":                     {"category": "analytics", "owner": "Twilio (Segment)"},
+    "amplitude.com":                  {"category": "analytics", "owner": "Amplitude"},
+    "branch.io":                      {"category": "analytics", "owner": "Branch Metrics", "note": "Mobiilisovellusten mainoskampanjoiden attribuutio"},
+    "adjust.com":                     {"category": "analytics", "owner": "Adjust", "note": "Mobiilisovellusten mainoskampanjoiden attribuutio"},
+    "appsflyer.com":                  {"category": "analytics", "owner": "AppsFlyer", "note": "Mobiilisovellusten mainoskampanjoiden attribuutio"},
+    "cuebiq.com":                     {"category": "location",  "owner": "Cuebiq", "note": "Sijaintidataa käsittelevä yritys"},
+
+    "dns.google":                     {"category": "bypass", "owner": "Google", "note": "Salattu DNS, jolla laite voi ohittaa Vahdin"},
+    "cloudflare-dns.com":             {"category": "bypass", "owner": "Cloudflare", "note": "Salattu DNS, jolla laite voi ohittaa Vahdin"},
+    "one.one.one.one":                {"category": "bypass", "owner": "Cloudflare"},
+    "dns.quad9.net":                  {"category": "bypass", "owner": "Quad9", "note": "Vahti käyttää Quad9:ää IP-osoitteella, joten tämän estäminen ei vaikuta Vahtiin"},
+    "doh.opendns.com":                {"category": "bypass", "owner": "Cisco (OpenDNS)"},
+    "dns.nextdns.io":                 {"category": "bypass", "owner": "NextDNS"},
+    "dns.adguard-dns.com":            {"category": "bypass", "owner": "AdGuard"},
+    "doh.cleanbrowsing.org":          {"category": "bypass", "owner": "CleanBrowsing"}
+  }
+}

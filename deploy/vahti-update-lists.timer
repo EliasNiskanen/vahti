@@ -1,0 +1,10 @@
+[Unit]
+Description=Vahti - estolistojen päivitys kerran viikossa
+
+[Timer]
+OnCalendar=weekly
+RandomizedDelaySec=6h
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write      # create the GitHub release
+      id-token: write      # sign build provenance (Sigstore)
+      attestations: write  # publish the attestation
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@0aaccfd150d50ccaeb58ebd88d36e91967a5f35b # v5.4.0
+        with:
+          go-version-file: go.mod
+      - name: Test
+        run: go test -race -count=1 ./...
+      - name: Build release archives
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -eu
+          mkdir dist
+          for target in arm64 armv7 amd64; do
+            case "$target" in
+              armv7) export GOARCH=arm GOARM=7 ;;
+              *)     export GOARCH=$target; unset GOARM || true ;;
+            esac
+            name="vahti_${VERSION}_linux_${target}"
+            mkdir -p "build/$name"
+            CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o "build/$name/vahti" ./cmd/vahti
+            cp deploy/install.sh deploy/uninstall.sh deploy/prepare-laptop.sh deploy/config.json deploy/*.service deploy/*.timer README.md LICENSE SECURITY.md "build/$name/"
+            cp -r docs "build/$name/"
+            tar -C build --owner=0 --group=0 --mtime='2000-01-01' --sort=name -czf "dist/$name.tar.gz" "$name"
+          done
+          go run github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.9.0 mod -licenses -json -output dist/vahti_${VERSION}_sbom.cdx.json
+          (cd dist && sha256sum * > SHA256SUMS)
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2 # v2.2.3
+        with:
+          subject-path: "dist/*"
+      - name: Publish release
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
+        with:
+          files: dist/*
+          generate_release_notes: true
+          draft: true

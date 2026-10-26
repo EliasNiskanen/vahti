@@ -1,0 +1,29 @@
+{
+  "dataDir": "/var/lib/vahti",
+  "dns": {
+    "listen": [":53"],
+    "upstreams": [
+      "tls://9.9.9.9:853#dns.quad9.net",
+      "tls://149.112.112.112:853#dns.quad9.net"
+    ],
+    "allowedClients": ["127.0.0.0/8", "::1/128", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7", "fe80::/10"],
+    "localDomains": ["lan", "home.arpa", "local", "internal", "localdomain"],
+    "localResolver": "",
+    "rebindProtection": true,
+    "rebindAllow": [],
+    "cacheSize": 10000,
+    "rateLimitQPS": 50
+  },
+  "web": {
+    "listen": ":443",
+    "redirectListen": ":80",
+    "tls": true,
+    "hostnames": ["vahti.lan", "vahti.home.arpa"],
+    "allowedClients": ["127.0.0.0/8", "::1/128", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "fc00::/7", "fe80::/10"]
+  },
+  "lists": [
+    {"name": "stevenblack", "url": "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts", "category": "ads"},
+    {"name": "urlhaus", "url": "https://urlhaus.abuse.ch/downloads/hostfile/", "category": "threat"}
+  ],
+  "logEntries": 20000
+}
