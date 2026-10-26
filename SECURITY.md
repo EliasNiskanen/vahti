@@ -12,11 +12,11 @@ Kerro ilmoituksessa:
 - miten sen voi toistaa (versio, asetukset, pyynnöt)
 - jos mahdollista, ehdotus korjaukseksi
 
-Tavoitteet:
+Vahti on harrastusprojekti, jota ylläpidetään vapaa-ajalla, joten tarkkoja aikoja en voi luvata. Pyrin seuraavaan:
 
-- vastaus 5 arkipäivän kuluessa
-- arvio vakavuudesta 10 arkipäivän kuluessa
-- korjaus vakaviin ongelmiin 30 päivän kuluessa, minkä jälkeen julkaistaan tiedote (GitHub Security Advisory) ja kiitetään ilmoittajaa, jos hän niin haluaa
+- vastaus viikon kuluessa
+- vakavat ongelmat korjataan ennen muita töitä
+- korjauksen jälkeen julkaistaan tiedote (GitHub Security Advisory), ja ilmoittajaa kiitetään, jos hän niin haluaa
 
 Pyydämme, ettet julkaise tietoja ennen korjausta etkä testaa muiden ihmisten laitteita.
 

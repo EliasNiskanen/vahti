@@ -9,6 +9,7 @@ Kaikki merkittävät muutokset kirjataan tähän tiedostoon. Muoto noudattaa [Ke
 - CodeQL ajetaan vain julkisessa repositoriossa, koska yksityisessä se vaatii maksullisen lisäosan.
 
 ### Lisätty
+- README: kehitysvaiheen ja harrastusprojektin tila sekä ohje muiden ihmisten liikenteen seuraamisesta.
 - **Kokeellinen Windows-tila** (`vahti local`): suodattaa sen tietokoneen liikenteen, jolla Vahti on käynnissä. Kuuntelee vain tätä konetta (127.0.0.1 ja ::1) ja siirtyy pelkkään IPv4:ään, jos IPv6 ei ole käytössä.
 - **DNS-asetusten automaattinen palautus Windowsissa:** `kaynnista-vahti.ps1` käynnistää Vahdin ja vartijan, joka ohjaa nimikyselyt Vahdille ja palauttaa alkuperäiset asetukset heti, kun Vahti suljetaan, kaatuu tai lakkaa vastaamasta. Jos kone sammuu kesken, ajastettu tehtävä palauttaa asetukset seuraavassa käynnistyksessä.
 - `tarkista-dns.ps1` näyttää, ovatko koneen DNS-asetukset normaalit. Ei vaadi järjestelmänvalvojan oikeuksia.

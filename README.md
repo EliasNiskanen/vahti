@@ -4,6 +4,14 @@ Vahti on kotiverkon yksityisyyssuodatin. Se toimii kotiverkon nimipalvelimena ja
 
 Vahti on täysin paikallinen. Sillä ei ole pilvipalvelua, käyttäjätiliä eikä etähallintaa, eikä se lähetä tietoja kenellekään. Ainoat yhteydet ulos ovat sallittujen nimikyselyjen välittäminen salattuna nimipalvelimelle sekä estolistojen lataus, kun pyydät sitä.
 
+> [!IMPORTANT]
+> **Vahti on harrastusprojekti ja kehitysvaiheessa.** Älä luota siihen kriittisenä suojauksena.
+> - Ulkopuolista tietoturvatarkastusta ei ole tehty.
+> - Asennusohjelmaa ei ole vielä ajettu oikealla Raspberry Pi:llä tai kannettavalla, eikä Windowsin DNS-vartijaa oikealla Windows-koneella. Asennusohjelma on tarkistettu automaattisesti (shellcheck), ja vartijan palautuslogiikka on testattu simuloiduilla verkkosovittimilla.
+> - Automaattiset testit, staticcheck ja haavoittuvuustarkistus ajetaan jokaisen muutoksen yhteydessä, mutta ne eivät korvaa tarkastusta.
+>
+> Ylläpidän projektia vapaa-ajallani. Vastaan issueihin ja korjaan ongelmia, kun ehdin, mutta en voi luvata aikataulua. Tietoturvaongelmista ilmoittaminen: [SECURITY.md](SECURITY.md).
+
 > [!WARNING]
 > **Vahdin käyttöönotto muuttaa DNS-asetuksia.** Kun reititin tai tietokone ohjataan käyttämään Vahtia nimipalvelimena, internet toimii vain niin kauan kuin Vahti on käynnissä. Jos Vahti pysähtyy, laite sammuu tai sen IP-osoite vaihtuu, verkkosivut ja sovellukset lakkaavat toimimasta, vaikka yhteys muuten olisi kunnossa. Lue [DNS-asetusten muuttaminen ja palauttaminen](#dns-asetusten-muuttaminen-ja-palauttaminen) ennen käyttöönottoa.
 
@@ -131,6 +139,12 @@ Ohje on kirjoitettu Raspberry Pi:lle, mutta se toimii samoin kaikilla Linux-kone
 - **Jos Vahti pysähtyy, netti pysähtyy.** Tämä on tarkoituksellista: suodatusta ei ohiteta huomaamatta. systemd käynnistää Vahdin automaattisesti uudelleen, jos se kaatuu tai nimipalvelu lakkaa vastaamasta 30 sekunniksi. Hätätilanteessa palauta reitittimen DNS-asetus.
 - **Unohtunut salasana:** `sudo systemctl stop vahti && sudo vahti reset-admin && sudo systemctl start vahti`
 - **Estolistat:** `sudo systemctl start vahti-update-lists` lataa listat heti. Asennusohjelma voi ottaa viikoittaisen päivityksen käyttöön.
+
+## Muiden ihmisten liikenteen seuraaminen
+
+Vahti näkee, mihin palveluihin kodin laitteet ottavat yhteyttä. Kun laitteita käyttävät myös muut, kerro heille Vahdista: mitä se näkee, mitä se estää ja kuka pääsee hallintasivulle. Vahdin loki on vain laitteen muistissa, eikä sitä lähetetä minnekään.
+
+Omassa kodissa Vahti on käyttäjän oma työkalu. Työpaikoilla, kimppa- ja soluasunnoissa, vuokralaisten verkoissa ja muissa jaetuissa verkoissa viestinnän luottamuksellisuutta koskevat säännöt ovat tiukemmat. Selvitä niissä etukäteen, saatko seurata muiden liikennettä ja miten siitä pitää ilmoittaa. Tämä ei ole oikeudellista neuvontaa.
 
 ## DNS-asetusten muuttaminen ja palauttaminen
 
