@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+// The default settings are valid and use only encrypted upstream DNS servers.
 func TestDefaultsAreValid(t *testing.T) {
 	c := Default()
 	if err := c.Validate(); err != nil {
@@ -19,6 +20,7 @@ func TestDefaultsAreValid(t *testing.T) {
 	}
 }
 
+// Unsafe settings (unencrypted or unnamed upstreams, http lists, path tricks) are rejected.
 func TestRejectsUnsafeConfig(t *testing.T) {
 	bad := []func(*Config){
 		func(c *Config) { c.DNS.Upstreams = []string{"tls://9.9.9.9:853"} },        // no server name
@@ -36,6 +38,7 @@ func TestRejectsUnsafeConfig(t *testing.T) {
 	}
 }
 
+// A typo in the config file is reported, and a missing file gives the defaults.
 func TestLoadRejectsUnknownKeys(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "c.json")
 	os.WriteFile(p, []byte(`{"dataDir":"/tmp/x","dsn":{}}`), 0o600)
@@ -47,6 +50,7 @@ func TestLoadRejectsUnknownKeys(t *testing.T) {
 	}
 }
 
+// deploy/config.json stays in line with the built-in defaults.
 func TestExampleConfigMatchesDefaults(t *testing.T) {
 	c, found, err := Load("../../deploy/config.json")
 	if err != nil || !found {

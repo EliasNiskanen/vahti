@@ -8,6 +8,7 @@ CONF=/etc/vahti
 DATA=/var/lib/vahti
 HERE=$(cd "$(dirname "$0")" && pwd)
 
+# say prints a message. fail prints an error message and stops the script.
 say()  { printf '%s\n' "$*"; }
 fail() { printf 'Error: %s\n' "$*" >&2; exit 1; }
 

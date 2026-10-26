@@ -18,6 +18,8 @@ type upstream struct {
 	pool   chan *dns.Conn
 }
 
+// newUpstream prepares a client for one upstream resolver (plain UDP/TCP or DNS over TLS
+// with certificate checking).
 func newUpstream(u config.Upstream) *upstream {
 	c := &dns.Client{Net: u.Net, Timeout: 3 * time.Second, UDPSize: 1232}
 	if u.Net == "tcp-tls" {
@@ -26,6 +28,8 @@ func newUpstream(u config.Upstream) *upstream {
 	return &upstream{cfg: u, client: c, pool: make(chan *dns.Conn, 4)}
 }
 
+// exchange sends a query to this upstream. Over UDP a truncated answer is retried over TCP.
+// Over TCP/TLS a pooled connection is reused, and a stale one is replaced with a fresh one.
 func (u *upstream) exchange(m *dns.Msg) (*dns.Msg, error) {
 	if u.cfg.Net == "udp" {
 		r, _, err := u.client.Exchange(m, u.cfg.Addr)
@@ -76,6 +80,9 @@ type forwarder struct {
 	pos int // index of the last upstream that worked
 }
 
+// exchange sends the query to the upstreams in turn, starting with the one that worked
+// last, and returns the first good answer. Every query gets a new random ID, and an
+// answer with the wrong ID is rejected (anti-spoofing).
 func (f *forwarder) exchange(m *dns.Msg) (*dns.Msg, error) {
 	f.mu.Lock()
 	start := f.pos

@@ -20,6 +20,8 @@ type bucket struct {
 	at     time.Time
 }
 
+// newLimiter creates a per-client rate limiter allowing qps queries per second with bursts
+// of four times that. qps <= 0 turns limiting off (nil limiter).
 func newLimiter(qps int) *limiter {
 	if qps <= 0 {
 		return nil
@@ -27,6 +29,8 @@ func newLimiter(qps int) *limiter {
 	return &limiter{rate: float64(qps), burst: float64(qps) * 4, buckets: map[netip.Addr]*bucket{}}
 }
 
+// allow reports whether this client may make another query now (token bucket). Buckets
+// idle for over a minute are cleaned up so spoofed addresses cannot fill memory.
 func (l *limiter) allow(a netip.Addr, now time.Time) bool {
 	if l == nil {
 		return true

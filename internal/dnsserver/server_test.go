@@ -25,6 +25,8 @@ type fakeUpstream struct {
 	srv     *dns.Server
 }
 
+// startUpstream starts the fake upstream DNS server. It answers every A query with
+// 198.51.100.1, except shop.example (a CNAME to a tracker) and rebind.example (a LAN address).
 func startUpstream(t *testing.T) *fakeUpstream {
 	t.Helper()
 	f := &fakeUpstream{}
@@ -63,6 +65,7 @@ func startUpstream(t *testing.T) *fakeUpstream {
 	return f
 }
 
+// newServer returns a Vahti DNS server that forwards to the fake upstream.
 func newServer(t *testing.T, up *fakeUpstream) (*Server, *engine.Engine) {
 	t.Helper()
 	cfg := config.Default().DNS
@@ -81,12 +84,14 @@ func newServer(t *testing.T, up *fakeUpstream) (*Server, *engine.Engine) {
 
 var lan = netip.MustParseAddr("192.168.1.50")
 
+// query sends one question to the server as if it came from client, and returns the answer.
 func query(s *Server, client netip.Addr, name string, qt uint16) *dns.Msg {
 	m := new(dns.Msg)
 	m.SetQuestion(dns.Fqdn(name), qt)
 	return s.Process(client, m)
 }
 
+// firstA returns the first IPv4 address in an answer, or fails the test if there is none.
 func firstA(t *testing.T, m *dns.Msg) string {
 	t.Helper()
 	for _, rr := range m.Answer {
@@ -98,6 +103,7 @@ func firstA(t *testing.T, m *dns.Msg) string {
 	return ""
 }
 
+// Allowed names are forwarded to the upstream, trackers get 0.0.0.0 without being forwarded.
 func TestForwardAndBlock(t *testing.T) {
 	up := startUpstream(t)
 	s, _ := newServer(t, up)
@@ -113,6 +119,8 @@ func TestForwardAndBlock(t *testing.T) {
 	}
 }
 
+// Repeated questions come from the cache, and the client's subnet (a location hint)
+// is never passed on to the upstream.
 func TestCacheAndNoClientSubnet(t *testing.T) {
 	up := startUpstream(t)
 	s, _ := newServer(t, up)
@@ -137,6 +145,7 @@ func TestCacheAndNoClientSubnet(t *testing.T) {
 	}
 }
 
+// A harmless-looking name that is a CNAME alias for a tracker is blocked, and the log names the tracker.
 func TestCNAMECloakingBlocked(t *testing.T) {
 	up := startUpstream(t)
 	s, eng := newServer(t, up)
@@ -149,6 +158,7 @@ func TestCNAMECloakingBlocked(t *testing.T) {
 	}
 }
 
+// A public name that resolves to a home network address is refused (DNS rebinding protection).
 func TestRebindProtection(t *testing.T) {
 	up := startUpstream(t)
 	s, _ := newServer(t, up)
@@ -157,6 +167,7 @@ func TestRebindProtection(t *testing.T) {
 	}
 }
 
+// Queries from outside the home network are dropped without an answer.
 func TestOnlyHomeNetworkIsServed(t *testing.T) {
 	up := startUpstream(t)
 	s, _ := newServer(t, up)
@@ -168,6 +179,8 @@ func TestOnlyHomeNetworkIsServed(t *testing.T) {
 	}
 }
 
+// Local names (.lan, single-label names, reverse lookups of private addresses)
+// are answered locally and never sent to the internet.
 func TestLocalNamesStayHome(t *testing.T) {
 	up := startUpstream(t)
 	s, _ := newServer(t, up)
@@ -184,6 +197,8 @@ func TestLocalNamesStayHome(t *testing.T) {
 	}
 }
 
+// Browsers' "use your own encrypted DNS" checks are answered so that the browser
+// keeps using Vahti, and public DNS-over-HTTPS resolvers are blocked.
 func TestBypassCanary(t *testing.T) {
 	up := startUpstream(t)
 	s, _ := newServer(t, up)
@@ -195,6 +210,7 @@ func TestBypassCanary(t *testing.T) {
 	}
 }
 
+// Empty questions, ANY queries and zone transfers are refused.
 func TestMalformedQueries(t *testing.T) {
 	up := startUpstream(t)
 	s, _ := newServer(t, up)
@@ -212,6 +228,7 @@ func TestMalformedQueries(t *testing.T) {
 	}
 }
 
+// Each client gets a burst of 4 x the per-second rate, and the allowance refills over time.
 func TestRateLimit(t *testing.T) {
 	l := newLimiter(10)
 	now := time.Now()
@@ -229,6 +246,7 @@ func TestRateLimit(t *testing.T) {
 	}
 }
 
+// The server works over real UDP and TCP sockets, not only through Process.
 func TestOverRealSockets(t *testing.T) {
 	up := startUpstream(t)
 	s, _ := newServer(t, up)
@@ -260,6 +278,7 @@ func TestOverRealSockets(t *testing.T) {
 	}
 }
 
+// Floods from many fake source addresses cannot lock out a real device.
 func TestRateLimiterSurvivesSpoofing(t *testing.T) {
 	l := newLimiter(5)
 	now := time.Now()

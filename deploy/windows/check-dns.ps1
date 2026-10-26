@@ -18,6 +18,7 @@ $task = [bool](Get-ScheduledTask -TaskName 'Vahti DNS restore' -ErrorAction Sile
 $internet = $true
 try { Resolve-DnsName -Name 'example.com' -Type A -DnsOnly -QuickTimeout -ErrorAction Stop | Out-Null } catch { $internet = $false }
 
+# Turns $true/$false into "yes"/"no" for the status table.
 function YesNo([bool]$v) { if ($v) { 'yes' } else { 'no' } }
 Write-Host ''
 Write-Host ("  Vahti running:            {0}" -f (YesNo $vahtiRunning))

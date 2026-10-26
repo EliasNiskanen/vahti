@@ -35,6 +35,7 @@ type ExchangeFunc func(*dns.Msg) (*dns.Msg, error)
 // Exchange calls f.
 func (f ExchangeFunc) Exchange(m *dns.Msg) (*dns.Msg, error) { return f(m) }
 
+// Exchange makes the forwarder usable as an Exchanger.
 func (f *forwarder) Exchange(m *dns.Msg) (*dns.Msg, error) { return f.exchange(m) }
 
 // Server is the filtering resolver.
@@ -349,6 +350,8 @@ func (s *Server) resolve(req *dns.Msg, fqdn string) (*dns.Msg, error) {
 	return resp, nil
 }
 
+// answerSelf answers queries for Vahti's own name (e.g. vahti.lan) with the address the
+// client can reach Vahti at.
 func (s *Server) answerSelf(req *dns.Msg, client netip.Addr, fqdn string, qtype uint16) *dns.Msg {
 	m := reply(req, dns.RcodeSuccess)
 	m.Authoritative = true
@@ -382,6 +385,8 @@ func (s *Server) isLocal(name string) bool {
 	return false
 }
 
+// forwardLocal sends a local-network name (e.g. printer.lan) to the router's DNS, if one is
+// configured. Otherwise it answers "no such name". Local names never go to the internet.
 func (s *Server) forwardLocal(req *dns.Msg) *dns.Msg {
 	if s.local == nil {
 		return reply(req, dns.RcodeNameError)
@@ -433,6 +438,8 @@ func (s *Server) maybeNameDevice(devID string, client netip.Addr) {
 	}()
 }
 
+// rebindAllowed reports whether a domain is on the list allowed to resolve to local
+// addresses (DNS rebinding protection makes exceptions only for these).
 func (s *Server) rebindAllowed(name string) bool {
 	for _, d := range s.rebindAllow {
 		if name == d || strings.HasSuffix(name, "."+d) {
@@ -442,6 +449,8 @@ func (s *Server) rebindAllowed(name string) bool {
 	return false
 }
 
+// isCanary reports the "canary" domains that browsers and Apple devices query to ask whether
+// they may bypass the network's DNS (Firefox DoH, iCloud Private Relay). Vahti answers no.
 func isCanary(name string) bool {
 	switch name {
 	case "use-application-dns.net", "mask.icloud.com", "mask-h2.icloud.com":
@@ -450,6 +459,8 @@ func isCanary(name string) bool {
 	return false
 }
 
+// reverseAddr turns a reverse-lookup name (x.x.x.x.in-addr.arpa or ip6.arpa) back into the
+// IP address it asks about.
 func reverseAddr(name string) (netip.Addr, bool) {
 	switch {
 	case strings.HasSuffix(name, ".in-addr.arpa"):
@@ -480,10 +491,12 @@ func reverseAddr(name string) (netip.Addr, bool) {
 	return netip.Addr{}, false
 }
 
+// hdr builds a DNS record header with the given name, type and TTL.
 func hdr(name string, t uint16, ttl uint32) dns.RR_Header {
 	return dns.RR_Header{Name: name, Rrtype: t, Class: dns.ClassINET, Ttl: ttl}
 }
 
+// reply creates an empty answer to req with the given result code.
 func reply(req *dns.Msg, rcode int) *dns.Msg {
 	m := new(dns.Msg)
 	m.SetRcode(req, rcode)

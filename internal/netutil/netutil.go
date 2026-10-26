@@ -103,6 +103,8 @@ func (a *ARP) Lookup(ip netip.Addr) string {
 	return a.tab[ip]
 }
 
+// readARP reads the Linux ARP table (/proc/net/arp) and returns each IP address with its
+// MAC address, so Vahti can recognise a device even if its IP changes.
 func readARP(path string) map[netip.Addr]string {
 	out := map[netip.Addr]string{}
 	f, err := os.Open(path)

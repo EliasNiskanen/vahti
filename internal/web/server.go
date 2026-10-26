@@ -81,6 +81,8 @@ func New(cfg Config, eng *engine.Engine) (*Server, error) {
 	return s, err
 }
 
+// cookieName returns the session cookie name. Over HTTPS it uses the __Host- prefix, which
+// makes the browser refuse the cookie unless it is secure, host-only and path "/".
 func (s *Server) cookieName() string {
 	if s.cfg.TLS {
 		return "__Host-vahti"
@@ -163,6 +165,8 @@ func (s *Server) guard(next http.Handler) http.Handler {
 	})
 }
 
+// hostAllowed checks the Host header against the names Vahti answers to. IP addresses are
+// always allowed; unknown names are refused to block DNS rebinding attacks.
 func (s *Server) hostAllowed(host string) bool {
 	if host == "" || len(host) > 255 {
 		return false
@@ -177,6 +181,8 @@ func (s *Server) hostAllowed(host string) bool {
 	return s.hostnames[intel.Normalize(host)]
 }
 
+// sameOrigin reports whether a state-changing request really comes from Vahti's own page,
+// using the Origin header or, if it is missing, Sec-Fetch-Site. This blocks cross-site requests.
 func (s *Server) sameOrigin(r *http.Request) bool {
 	if o := r.Header.Get("Origin"); o != "" {
 		u, err := url.Parse(o)
@@ -222,6 +228,7 @@ func (s *Server) auth(next authedFunc) http.HandlerFunc {
 	}
 }
 
+// setSessionCookie stores the session token in an HttpOnly, SameSite=Strict cookie.
 func (s *Server) setSessionCookie(w http.ResponseWriter, token string) {
 	http.SetCookie(w, &http.Cookie{
 		Name: s.cookieName(), Value: token, Path: "/", HttpOnly: true, Secure: s.cfg.TLS,
@@ -229,6 +236,7 @@ func (s *Server) setSessionCookie(w http.ResponseWriter, token string) {
 	})
 }
 
+// clearSessionCookie tells the browser to delete the session cookie.
 func (s *Server) clearSessionCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{Name: s.cookieName(), Value: "", Path: "/", HttpOnly: true,
 		Secure: s.cfg.TLS, SameSite: http.SameSiteStrictMode, MaxAge: -1})
@@ -236,12 +244,15 @@ func (s *Server) clearSessionCookie(w http.ResponseWriter) {
 
 // ---------------------------------------------------------------- static
 
+// serveIndex sends the single HTML page of the web interface.
 func (s *Server) serveIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
 	_, _ = w.Write(s.files["/static/index.html"])
 }
 
+// serveStatic sends an embedded file (script, style sheet, icon) from /static/ with the
+// right content type. Only files built into the program can be served.
 func (s *Server) serveStatic(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("file")
 	b, ok := s.files["/static/"+name]
@@ -260,6 +271,8 @@ func (s *Server) serveStatic(w http.ResponseWriter, r *http.Request) {
 
 // ---------------------------------------------------------------- helpers
 
+// readJSON reads a JSON request body (max 64 KiB, no unknown fields) into v. On error it
+// writes the error response itself and returns false.
 func readJSON(w http.ResponseWriter, r *http.Request, v any) bool {
 	if ct := r.Header.Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
 		writeErr(w, http.StatusUnsupportedMediaType, "The request must be JSON.")
@@ -279,6 +292,7 @@ func readJSON(w http.ResponseWriter, r *http.Request, v any) bool {
 	return true
 }
 
+// writeJSON sends v as JSON with the given status code and tells caches not to store it.
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
@@ -288,10 +302,12 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	}
 }
 
+// writeErr sends an error message as JSON: {"error": msg}.
 func writeErr(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, map[string]string{"error": msg})
 }
 
+// engineErr turns an engine error into the right HTTP status and a user-friendly message.
 func engineErr(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, engine.ErrNotFound):
@@ -303,6 +319,7 @@ func engineErr(w http.ResponseWriter, err error) {
 	}
 }
 
+// clientAddr returns the IP address of the client that sent the request.
 func clientAddr(r *http.Request) netip.Addr {
 	ap, _ := netip.ParseAddrPort(r.RemoteAddr)
 	return ap.Addr()

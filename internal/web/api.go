@@ -14,6 +14,8 @@ import (
 
 // ---------------------------------------------------------------- session & auth
 
+// apiSession (GET /api/session) tells the browser whether Vahti still needs setting up,
+// whether this browser is signed in, and returns the CSRF token for signed-in sessions.
 func (s *Server) apiSession(w http.ResponseWriter, r *http.Request) {
 	out := map[string]any{
 		"authenticated": false,
@@ -34,6 +36,8 @@ func (s *Server) apiSession(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
+// wait answers 429 Too Many Requests and returns true if this client has had too many
+// failed password attempts and must wait before trying again.
 func (s *Server) wait(w http.ResponseWriter, r *http.Request) bool {
 	if d := s.thr.check(clientAddr(r)); d > 0 {
 		w.Header().Set("Retry-After", strconv.Itoa(int(d.Seconds())+1))
@@ -43,6 +47,7 @@ func (s *Server) wait(w http.ResponseWriter, r *http.Request) bool {
 	return false
 }
 
+// humanDur turns a wait time into readable text such as "30 seconds" or "5 minutes".
 func humanDur(d time.Duration) string {
 	if d < time.Minute {
 		return strconv.Itoa(int(d.Seconds())+1) + " seconds"
@@ -50,6 +55,9 @@ func humanDur(d time.Duration) string {
 	return strconv.Itoa(int(d.Minutes())+1) + " minutes"
 }
 
+// apiSetup (POST /api/setup) sets the admin password on first use. It needs the one-time
+// setup code that Vahti shows in its log and setup-code file, so a stranger on the network
+// cannot claim the device first. The code file is deleted afterwards.
 func (s *Server) apiSetup(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Code     string `json:"code"`
@@ -90,6 +98,8 @@ func (s *Server) apiSetup(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"authenticated": true, "csrf": csrf})
 }
 
+// apiLogin (POST /api/login) checks the admin password and, if it is right, starts a session
+// and sets the session cookie. Wrong passwords count towards the login throttle.
 func (s *Server) apiLogin(w http.ResponseWriter, r *http.Request) {
 	var in struct {
 		Password string `json:"password"`
@@ -114,12 +124,15 @@ func (s *Server) apiLogin(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"authenticated": true, "csrf": csrf})
 }
 
+// apiLogout (POST /api/logout) ends the current session and clears the cookie.
 func (s *Server) apiLogout(w http.ResponseWriter, r *http.Request, tok string) {
 	s.sess.remove(tok)
 	s.clearSessionCookie(w)
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
+// apiPassword (POST /api/password) changes the admin password after checking the current one,
+// and signs out every other session.
 func (s *Server) apiPassword(w http.ResponseWriter, r *http.Request, tok string) {
 	var in struct {
 		Current string `json:"current"`
@@ -155,6 +168,8 @@ type logOut struct {
 	Owner      string `json:"owner,omitempty"`
 }
 
+// logEntries adds each log entry's device name and the domain owner (from the tracker
+// database) for display. Device names are looked up once per device.
 func (s *Server) logEntries(in []engine.LogEntry) []logOut {
 	names := map[string]string{}
 	out := make([]logOut, 0, len(in))
@@ -169,6 +184,9 @@ func (s *Server) logEntries(in []engine.LogEntry) []logOut {
 	return out
 }
 
+// apiOverview (GET /api/overview) returns the home-page numbers: allowed and blocked queries,
+// categories, pending decisions, device count, the 12 latest log lines and any warnings
+// (e.g. no block lists loaded).
 func (s *Server) apiOverview(w http.ResponseWriter, r *http.Request, _ string) {
 	total, _, cats := s.eng.Stats()
 	st := s.eng.Settings()
@@ -208,6 +226,7 @@ type deviceOut struct {
 	Blocked uint64 `json:"blocked"`
 }
 
+// apiDevices (GET /api/devices) lists every known device with its allowed and blocked counts.
 func (s *Server) apiDevices(w http.ResponseWriter, r *http.Request, _ string) {
 	_, per, _ := s.eng.Stats()
 	devs := s.eng.Devices()
@@ -224,6 +243,8 @@ type destOut struct {
 	Owner string `json:"owner,omitempty"`
 }
 
+// apiDevice (GET /api/devices/{id}) returns one device with its counts, the destinations it
+// has contacted (with owners), the rules that apply to it and the category defaults.
 func (s *Server) apiDevice(w http.ResponseWriter, r *http.Request, _ string) {
 	id := r.PathValue("id")
 	d, ok := s.eng.Device(id)
@@ -251,6 +272,8 @@ func (s *Server) apiDevice(w http.ResponseWriter, r *http.Request, _ string) {
 	})
 }
 
+// apiDeviceUpdate (PATCH /api/devices/{id}) changes a device's name, kind, mode, learning
+// time or per-category overrides.
 func (s *Server) apiDeviceUpdate(w http.ResponseWriter, r *http.Request, _ string) {
 	var in engine.DeviceUpdate
 	if !readJSON(w, r, &in) {
@@ -264,6 +287,7 @@ func (s *Server) apiDeviceUpdate(w http.ResponseWriter, r *http.Request, _ strin
 	writeJSON(w, http.StatusOK, d)
 }
 
+// apiDeviceDelete (DELETE /api/devices/{id}) forgets a device and its device-specific rules.
 func (s *Server) apiDeviceDelete(w http.ResponseWriter, r *http.Request, _ string) {
 	if err := s.eng.ForgetDevice(r.PathValue("id")); err != nil {
 		engineErr(w, err)
@@ -286,6 +310,8 @@ type queueOut struct {
 	Vias         []string `json:"vias"`
 }
 
+// apiQueue (GET /api/queue) lists the requests waiting for a decision, with who owns each
+// domain, what it is for, and which other devices or related domains are involved.
 func (s *Server) apiQueue(w http.ResponseWriter, r *http.Request, _ string) {
 	items := s.eng.Queue()
 	if len(items) > 100 {
@@ -305,6 +331,9 @@ func (s *Server) apiQueue(w http.ResponseWriter, r *http.Request, _ string) {
 	writeJSON(w, http.StatusOK, out)
 }
 
+// apiQueueResolve (POST /api/queue/{id}) records the admin's decision for a waiting request
+// (allow once, allow for an hour, always allow or block) and turns it into a rule, either for
+// that exact name or for the whole site.
 func (s *Server) apiQueueResolve(w http.ResponseWriter, r *http.Request, _ string) {
 	var in struct {
 		Decision string `json:"decision"`
@@ -326,6 +355,7 @@ type ruleOut struct {
 	DeviceName string `json:"deviceName"`
 }
 
+// apiRules (GET /api/rules) lists all allow and block rules with device names.
 func (s *Server) apiRules(w http.ResponseWriter, r *http.Request, _ string) {
 	rs := s.eng.Rules()
 	out := make([]ruleOut, 0, len(rs))
@@ -335,6 +365,8 @@ func (s *Server) apiRules(w http.ResponseWriter, r *http.Request, _ string) {
 	writeJSON(w, http.StatusOK, out)
 }
 
+// apiRuleAdd (POST /api/rules) adds a rule by hand. An empty device means all devices ("*"),
+// and Hours > 0 makes the rule expire after that many hours.
 func (s *Server) apiRuleAdd(w http.ResponseWriter, r *http.Request, _ string) {
 	var in struct {
 		Device string        `json:"device"`
@@ -360,6 +392,7 @@ func (s *Server) apiRuleAdd(w http.ResponseWriter, r *http.Request, _ string) {
 	writeJSON(w, http.StatusOK, ru)
 }
 
+// apiRuleDelete (DELETE /api/rules/{id}) removes a rule.
 func (s *Server) apiRuleDelete(w http.ResponseWriter, r *http.Request, _ string) {
 	if err := s.eng.DeleteRule(r.PathValue("id")); err != nil {
 		engineErr(w, err)
@@ -368,6 +401,8 @@ func (s *Server) apiRuleDelete(w http.ResponseWriter, r *http.Request, _ string)
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
+// apiSettings (GET /api/settings) returns the category defaults, the mode for new devices,
+// the loaded block lists, the upstream DNS servers and any active pause.
 func (s *Server) apiSettings(w http.ResponseWriter, r *http.Request, _ string) {
 	st := s.eng.Settings()
 	out := map[string]any{
@@ -383,6 +418,7 @@ func (s *Server) apiSettings(w http.ResponseWriter, r *http.Request, _ string) {
 	writeJSON(w, http.StatusOK, out)
 }
 
+// apiSettingsUpdate (PUT /api/settings) saves changed category defaults or new-device mode.
 func (s *Server) apiSettingsUpdate(w http.ResponseWriter, r *http.Request, _ string) {
 	var in engine.SettingsUpdate
 	if !readJSON(w, r, &in) {
@@ -395,6 +431,7 @@ func (s *Server) apiSettingsUpdate(w http.ResponseWriter, r *http.Request, _ str
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
+// apiPause (POST /api/pause) pauses blocking for the given number of minutes (0 resumes).
 func (s *Server) apiPause(w http.ResponseWriter, r *http.Request, _ string) {
 	var in struct {
 		Minutes int `json:"minutes"`
@@ -410,6 +447,8 @@ func (s *Server) apiPause(w http.ResponseWriter, r *http.Request, _ string) {
 	writeJSON(w, http.StatusOK, map[string]any{"pausedUntil": until})
 }
 
+// apiLog (GET /api/log) returns the query log, filtered by device, action (allow/block)
+// and a search text.
 func (s *Server) apiLog(w http.ResponseWriter, r *http.Request, _ string) {
 	q := r.URL.Query()
 	f := engine.LogFilter{Device: q.Get("device"), Query: q.Get("q")}

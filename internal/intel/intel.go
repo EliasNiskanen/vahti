@@ -147,6 +147,7 @@ func (db *DB) LoadListFile(path, name, category string) ListInfo {
 	return info
 }
 
+// addInfo records information (name, size, errors) about a loaded list.
 func (db *DB) addInfo(i ListInfo) {
 	db.mu.Lock()
 	db.lists = append(db.lists, i)
@@ -194,6 +195,8 @@ func (db *DB) Owner(name string) string {
 	return db.owners[Registrable(Normalize(name))]
 }
 
+// parent removes the first label of a domain (a.b.c -> b.c). It returns "" instead of a
+// bare top-level domain, so a list entry can never block a whole TLD.
 func parent(d string) string {
 	i := strings.IndexByte(d, '.')
 	if i < 0 {

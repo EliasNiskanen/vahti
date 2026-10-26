@@ -78,6 +78,8 @@ func EnsureCert(dir string, hostnames []string) (tls.Certificate, string, error)
 	return c, fingerprint(der), err
 }
 
+// fingerprint returns the certificate's SHA-256 fingerprint as AB:CD:... so the admin can
+// compare it with what the browser shows.
 func fingerprint(der []byte) string {
 	s := sha256.Sum256(der)
 	h := strings.ToUpper(hex.EncodeToString(s[:]))

@@ -8,10 +8,15 @@ import (
 	"github.com/EliasNiskanen/vahti/internal/intel"
 )
 
+// clock is a fake clock that tests can move forward by hand,
+// so timed rules and learning periods can be tested without waiting.
 type clock struct{ t time.Time }
 
+// now returns the fake clock's current time.
 func (c *clock) now() time.Time { return c.t }
 
+// newTest returns an engine with an empty tracker database, a fake clock
+// and one known device (192.168.1.10), whose ID is returned.
 func newTest(t *testing.T) (*Engine, *clock, string) {
 	t.Helper()
 	db := intel.New()
@@ -22,10 +27,12 @@ func newTest(t *testing.T) (*Engine, *clock, string) {
 	return e, c, id
 }
 
+// decide asks the engine what to do when device dev looks up name.
 func decide(e *Engine, dev, name string) Verdict {
 	return e.Decide(dev, name, e.DB().Lookup(name))
 }
 
+// Known trackers are blocked by default, other names are allowed on an open device.
 func TestKnownTrackerBlockedByDefault(t *testing.T) {
 	e, _, dev := newTest(t)
 	v := decide(e, dev, "stats.g.doubleclick.net")
@@ -37,6 +44,7 @@ func TestKnownTrackerBlockedByDefault(t *testing.T) {
 	}
 }
 
+// Names in the threat category stay blocked even if the user adds an allow rule.
 func TestThreatCannotBeAllowed(t *testing.T) {
 	e, _, dev := newTest(t)
 	e.DB().Add("evil.example", intel.Entry{Category: intel.Threat})
@@ -57,6 +65,7 @@ func TestThreatCannotBeAllowed(t *testing.T) {
 	}
 }
 
+// A device's own rule beats a rule for all devices, and a more specific name beats a broader one.
 func TestRulePrecedence(t *testing.T) {
 	e, _, dev := newTest(t)
 	mustRule(t, e, "*", "example.com", Block)
@@ -78,6 +87,7 @@ func TestRulePrecedence(t *testing.T) {
 	}
 }
 
+// mustRule adds a permanent rule and fails the test if that does not work.
 func mustRule(t *testing.T, e *Engine, dev, dom string, a Action) {
 	t.Helper()
 	if _, err := e.AddRule(dev, dom, a, 0, false, "user"); err != nil {
@@ -85,6 +95,7 @@ func mustRule(t *testing.T, e *Engine, dev, dom string, a Action) {
 	}
 }
 
+// A one-time permission works only once, and a timed permission expires when its time is up.
 func TestOnceAndTimedRules(t *testing.T) {
 	e, c, dev := newTest(t)
 	locked := Locked
@@ -112,6 +123,8 @@ func TestOnceAndTimedRules(t *testing.T) {
 	}
 }
 
+// A locked device queues unknown names for approval, repeated attempts are counted
+// and a decision for the whole site clears the related queue items.
 func TestLockedQueueAndResolve(t *testing.T) {
 	e, _, dev := newTest(t)
 	locked := Locked
@@ -144,6 +157,8 @@ func TestLockedQueueAndResolve(t *testing.T) {
 	}
 }
 
+// Learning mode allows everything for a while and then locks the device,
+// keeping what it learned as allowed.
 func TestLearningLocksAfterwards(t *testing.T) {
 	e, c, dev := newTest(t)
 	m := Learning
@@ -166,6 +181,8 @@ func TestLearningLocksAfterwards(t *testing.T) {
 	}
 }
 
+// A device can allow a whole tracker category (but never threats), and unknown
+// CNAME targets are never put in the approval queue.
 func TestCategoryOverrideAndCNAME(t *testing.T) {
 	e, _, dev := newTest(t)
 	allow := Allow
@@ -183,6 +200,7 @@ func TestCategoryOverrideAndCNAME(t *testing.T) {
 	}
 }
 
+// Invalid domain names, names that are too long and other bad input are rejected.
 func TestValidation(t *testing.T) {
 	e, _, dev := newTest(t)
 	bad := []string{"", "localhost", "a..b", "-x.com", "x.com/evil", "<script>.com", "a b.com"}
@@ -204,6 +222,8 @@ func TestValidation(t *testing.T) {
 	}
 }
 
+// The query log keeps only the newest entries (newest first), and a state snapshot
+// is produced only when something has changed.
 func TestLogRingAndSnapshot(t *testing.T) {
 	db := intel.New()
 	e := New(nil, db, 100)
@@ -226,6 +246,8 @@ func TestLogRingAndSnapshot(t *testing.T) {
 	}
 }
 
+// The number of devices is capped, and devices beyond the cap share one
+// overflow device that is still filtered.
 func TestStateIsBounded(t *testing.T) {
 	e, _, _ := newTest(t)
 	for i := 0; i < MaxDevices+50; i++ {

@@ -5,6 +5,10 @@ $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ('vahti-test-' + [guid]::NewG
 $env:ProgramData = Join-Path $tmp 'pd'; $env:LOCALAPPDATA = Join-Path $tmp 'la'
 Remove-Item -Recurse -Force $env:ProgramData -ErrorAction SilentlyContinue
 # --- simulated Windows ---
+# The variables hold the fake computer's DNS settings, and the functions after them replace
+# the real Windows networking, registry and scheduled-task commands with fakes that only
+# change these variables. So the module can be tested on any computer (including Linux)
+# without touching real network settings.
 $global:dns = @{ 7 = @('192.168.1.1'); 9 = @('1.1.1.1','8.8.8.8') }   # 7 = DHCP (wifi), 9 = static (ethernet)
 $global:static = @{ 7 = ''; 9 = '1.1.1.1,8.8.8.8' }
 $global:vahti = $true; $global:tasks = @{}
@@ -30,6 +34,7 @@ function global:New-ScheduledTaskPrincipal { param($UserId,$LogonType,$RunLevel)
 function global:Register-ScheduledTask { param($TaskName,$Action,$Trigger,$Principal,$Description,[switch]$Force) $global:tasks[$TaskName]=$Action }
 function global:Unregister-ScheduledTask { param($TaskName,$Confirm,$ErrorAction) $global:tasks.Remove($TaskName) }
 Import-Module (Join-Path $PSScriptRoot '../VahtiDns.psm1') -Force
+# Check prints "ok: <message>" if the condition holds, otherwise stops the test with FAIL.
 function Check($c,$m){ if(-not $c){ throw "FAIL: $m" } else { "ok: $m" } }
 
 $v6 = Set-VahtiDns

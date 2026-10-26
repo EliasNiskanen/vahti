@@ -38,6 +38,7 @@ var version = "dev"
 
 const defaultConfig = "/etc/vahti/config.json"
 
+// usage prints the list of commands and how to use them.
 func usage() {
 	fmt.Fprintf(os.Stderr, `Vahti %s - privacy filter for your home network
 
@@ -51,6 +52,8 @@ Usage:
 `, version, defaultConfig)
 }
 
+// main picks the command (run, demo, local, update-lists, reset-admin, version) from
+// the first argument and runs it. Without a command Vahti runs as the service.
 func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
 	cmd := "run"
@@ -84,6 +87,8 @@ func main() {
 	}
 }
 
+// loadConfig reads the -config flag and loads that file. A missing file is fine:
+// the defaults are used.
 func loadConfig(fs *flag.FlagSet, args []string) (config.Config, error) {
 	path := fs.String("config", defaultConfig, "configuration file")
 	if err := fs.Parse(args); err != nil {
@@ -99,6 +104,9 @@ func loadConfig(fs *flag.FlagSet, args []string) (config.Config, error) {
 	return cfg, nil
 }
 
+// buildDB loads the tracker database: the built-in list of known services plus every
+// downloaded block list. A list that fails to load is logged and skipped. In demo mode
+// it also adds the demo's made-up tracker domains.
 func buildDB(cfg config.Config, demoMode bool) *intel.DB {
 	db := intel.New()
 	for _, l := range cfg.Lists {
@@ -148,6 +156,9 @@ func localConfig(dir, webAddr, router string) (config.Config, error) {
 	return cfg, cfg.Validate()
 }
 
+// cmdRun starts Vahti in the given mode (service, demo or local): it loads the settings
+// and saved state, starts the DNS server and the web interface, saves the state regularly,
+// reloads changed block lists, reports health to systemd and shuts down cleanly on a signal.
 func cmdRun(args []string, mode runMode) error {
 	demoMode := mode == modeDemo
 	fs := flag.NewFlagSet("run", flag.ExitOnError)
@@ -424,6 +435,8 @@ func nameThisComputer(eng *engine.Engine) {
 	}
 }
 
+// listsModTime returns the newest modification time of the block list files, so a
+// change can be noticed and the lists reloaded.
 func listsModTime(cfg config.Config) time.Time {
 	var latest time.Time
 	for _, l := range cfg.Lists {
@@ -434,6 +447,8 @@ func listsModTime(cfg config.Config) time.Time {
 	return latest
 }
 
+// saveState writes the devices, rules and settings to disk if they have changed
+// (or always when force is true). If saving fails, the state stays marked as unsaved.
 func saveState(eng *engine.Engine, path string, force bool) error {
 	s, changed := eng.Snapshot(force)
 	if !changed {
@@ -446,6 +461,8 @@ func saveState(eng *engine.Engine, path string, force bool) error {
 	return nil
 }
 
+// selfCheckAddr turns the DNS listen address into one Vahti can query itself for the
+// health check (0.0.0.0 or :: becomes 127.0.0.1).
 func selfCheckAddr(listen string) string {
 	host, port, err := net.SplitHostPort(listen)
 	if err != nil {
@@ -459,6 +476,8 @@ func selfCheckAddr(listen string) string {
 
 // ---------------------------------------------------------------- update-lists
 
+// cmdUpdateLists downloads the block lists named in the configuration. It is the only
+// command that fetches anything from the internet. One failed list does not stop the others.
 func cmdUpdateLists(args []string) error {
 	fs := flag.NewFlagSet("update-lists", flag.ExitOnError)
 	local := fs.Bool("local", false, "update the lists for local mode (vahti local)")
@@ -504,6 +523,8 @@ func cmdUpdateLists(args []string) error {
 	return nil
 }
 
+// downloadList downloads one block list (max 64 MB), keeps only valid domain names and
+// saves them atomically to dest. It returns the number of domains.
 func downloadList(c *http.Client, l config.List, dest string) (int, error) {
 	req, err := http.NewRequest(http.MethodGet, l.URL, nil)
 	if err != nil {
@@ -539,6 +560,8 @@ func downloadList(c *http.Client, l config.List, dest string) (int, error) {
 
 // ---------------------------------------------------------------- reset-admin
 
+// cmdResetAdmin forgets the admin password and creates a new setup code, for when the
+// password is lost. Vahti must be stopped first.
 func cmdResetAdmin(args []string) error {
 	fs := flag.NewFlagSet("reset-admin", flag.ExitOnError)
 	cfg, err := loadConfig(fs, args)

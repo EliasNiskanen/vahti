@@ -131,13 +131,17 @@ type sessions struct {
 	now func() time.Time
 }
 
+// newSessions creates an empty session store.
 func newSessions() *sessions { return &sessions{m: map[string]*session{}, now: time.Now} }
 
+// tokenKey hashes a session token with SHA-256. Only the hash is kept in memory, so a
+// memory dump does not reveal usable tokens.
 func tokenKey(tok string) string {
 	s := sha256.Sum256([]byte(tok))
 	return base64.RawStdEncoding.EncodeToString(s[:])
 }
 
+// randToken returns 32 random bytes from the system's secure random source, base64-encoded.
 func randToken() string {
 	b := make([]byte, 32)
 	_, _ = rand.Read(b)
@@ -186,6 +190,7 @@ func (s *sessions) get(token string) (*session, bool) {
 	return &c, true
 }
 
+// remove ends one session (logout).
 func (s *sessions) remove(token string) {
 	s.mu.Lock()
 	delete(s.m, tokenKey(token))
@@ -220,6 +225,7 @@ type failRec struct {
 	last  time.Time
 }
 
+// newThrottle creates an empty login throttle.
 func newThrottle() *throttle { return &throttle{fails: map[netip.Addr]*failRec{}, now: time.Now} }
 
 // check returns how long the client must wait before trying again.
@@ -243,6 +249,8 @@ func (t *throttle) check(a netip.Addr) time.Duration {
 	return 0
 }
 
+// fail records a failed password attempt from this address. From the fifth failure on the
+// client must wait 15 s, then 30 s, 60 s and so on, at most 30 minutes. A quiet hour resets it.
 func (t *throttle) fail(a netip.Addr) {
 	now := t.now()
 	t.mu.Lock()
@@ -271,6 +279,7 @@ func (t *throttle) fail(a netip.Addr) {
 	}
 }
 
+// success clears the failure count after a correct password.
 func (t *throttle) success(a netip.Addr) {
 	t.mu.Lock()
 	delete(t.fails, a)

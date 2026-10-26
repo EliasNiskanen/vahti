@@ -15,12 +15,14 @@ import (
 
 const testCode = "ABCD-EFGH-IJKL-MNOP"
 
+// harness wraps the web server and its engine for tests.
 type harness struct {
 	t   *testing.T
 	h   http.Handler
 	eng *engine.Engine
 }
 
+// newHarness returns a web server that has not been set up yet, with the test setup code.
 func newHarness(t *testing.T) *harness {
 	t.Helper()
 	eng := engine.New(nil, intel.New(), 100)
@@ -34,12 +36,16 @@ func newHarness(t *testing.T) *harness {
 
 type reqOpt func(*http.Request)
 
+// Request options for do: the client address, the Host header, any header,
+// the session cookie and the CSRF token.
 func from(ip string) reqOpt  { return func(r *http.Request) { r.RemoteAddr = ip + ":40000" } }
 func host(h string) reqOpt   { return func(r *http.Request) { r.Host = h } }
 func hdr(k, v string) reqOpt { return func(r *http.Request) { r.Header.Set(k, v) } }
 func cookie(c string) reqOpt { return func(r *http.Request) { r.Header.Set("Cookie", c) } }
 func csrf(tok string) reqOpt { return hdr("X-CSRF-Token", tok) }
 
+// do sends a request to the web server, by default from a home network
+// address to https://vahti.lan, and returns the recorded response.
 func (h *harness) do(method, path, body string, opts ...reqOpt) *httptest.ResponseRecorder {
 	var r *http.Request
 	if body != "" {
@@ -74,6 +80,7 @@ func (h *harness) login() (string, string) {
 	return c.Name + "=" + c.Value, out.CSRF
 }
 
+// Requests from the internet or with a foreign Host name (DNS rebinding) are refused.
 func TestNetworkAndHostChecks(t *testing.T) {
 	h := newHarness(t)
 	if w := h.do("GET", "/", "", from("203.0.113.5")); w.Code != http.StatusForbidden {
@@ -89,6 +96,7 @@ func TestNetworkAndHostChecks(t *testing.T) {
 	}
 }
 
+// Every page gets the security headers (CSP, frame blocking, HSTS and others).
 func TestSecurityHeaders(t *testing.T) {
 	h := newHarness(t)
 	w := h.do("GET", "/", "")
@@ -102,6 +110,8 @@ func TestSecurityHeaders(t *testing.T) {
 	}
 }
 
+// The first setup needs the right code and a strong password, works only once
+// and discards the setup code afterwards.
 func TestSetupFlow(t *testing.T) {
 	h := newHarness(t)
 	if w := h.do("GET", "/api/devices", ""); w.Code != http.StatusUnauthorized {
@@ -126,6 +136,7 @@ func TestSetupFlow(t *testing.T) {
 	_ = tok
 }
 
+// Changes need a valid CSRF token and must come from the Vahti page itself.
 func TestCSRFAndOrigin(t *testing.T) {
 	h := newHarness(t)
 	c, tok := h.login()
@@ -147,6 +158,7 @@ func TestCSRFAndOrigin(t *testing.T) {
 	}
 }
 
+// Request bodies with unknown fields or extra data are rejected.
 func TestStrictJSON(t *testing.T) {
 	h := newHarness(t)
 	c, tok := h.login()
@@ -168,6 +180,7 @@ func TestStrictJSON(t *testing.T) {
 	}
 }
 
+// After several wrong passwords the login is temporarily blocked.
 func TestLoginThrottle(t *testing.T) {
 	h := newHarness(t)
 	h.login()
@@ -186,6 +199,8 @@ func TestLoginThrottle(t *testing.T) {
 	}
 }
 
+// Passwords are hashed with Argon2id, wrong or malformed hashes never match,
+// and setup codes are compared without caring about case or separators.
 func TestPasswordHash(t *testing.T) {
 	enc, err := HashPassword("a-password-that-is-long")
 	if err != nil {
@@ -204,6 +219,8 @@ func TestPasswordHash(t *testing.T) {
 	}
 }
 
+// The web interface never builds HTML from strings, loads nothing from other hosts
+// and cannot be used to read files outside the static folder.
 func TestStaticAssetsAreSafe(t *testing.T) {
 	b, err := staticFS.ReadFile("static/app.js")
 	if err != nil {
@@ -224,6 +241,7 @@ func TestStaticAssetsAreSafe(t *testing.T) {
 	}
 }
 
+// The client's IPv6 address is read correctly from the connection.
 func TestClientAddr(t *testing.T) {
 	r := httptest.NewRequest("GET", "/", nil)
 	r.RemoteAddr = "[fd00::5]:1234"

@@ -5,6 +5,8 @@ import (
 	"testing"
 )
 
+// Block lists in hosts, adblock and plain formats are read correctly,
+// and comments, local names and invalid lines are skipped.
 func TestParseListFormats(t *testing.T) {
 	in := `# comment
 0.0.0.0 ads.example.com
@@ -31,6 +33,7 @@ ads.example.com
 	}
 }
 
+// A lookup finds the most specific matching entry, and a bare top-level domain never matches.
 func TestLookupMostSpecific(t *testing.T) {
 	db := New()
 	db.Add("example.com", Entry{Category: Ads})
@@ -49,6 +52,7 @@ func TestLookupMostSpecific(t *testing.T) {
 	}
 }
 
+// Registrable returns the site a name belongs to, such as example.co.uk.
 func TestRegistrable(t *testing.T) {
 	cases := map[string]string{
 		"a.b.example.co.uk": "example.co.uk",
@@ -62,6 +66,7 @@ func TestRegistrable(t *testing.T) {
 	}
 }
 
+// The built-in tracker list loads and has a reasonable number of entries.
 func TestSeedIsValid(t *testing.T) {
 	db := New()
 	if l := db.Lists(); len(l) != 1 || l[0].Entries < 40 {

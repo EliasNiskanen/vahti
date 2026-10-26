@@ -179,6 +179,8 @@ func New(st *State, db *intel.DB, logSize int) *Engine {
 	}
 }
 
+// normalizeState repairs state loaded from disk: it fills in missing maps and category
+// defaults, always blocks the threat category, and resets unknown modes to "open".
 func normalizeState(st *State) {
 	if st.Devices == nil {
 		st.Devices = map[string]*Device{}
@@ -215,6 +217,7 @@ func (e *Engine) SetClock(f func() time.Time) { e.now = f }
 // DB returns the intel database.
 func (e *Engine) DB() *intel.DB { return e.db }
 
+// newID returns a random 16-character hex ID for devices, rules and queue items.
 func newID() string {
 	b := make([]byte, 8)
 	_, _ = rand.Read(b)
@@ -271,6 +274,7 @@ func (e *Engine) Identify(ip netip.Addr, mac string) string {
 	return id
 }
 
+// defaultName is the name a device gets before the admin names it.
 func defaultName(ip netip.Addr) string {
 	if ip.IsLoopback() {
 		return "Vahti device itself"
@@ -366,6 +370,7 @@ func (e *Engine) UpdateDevice(id string, u DeviceUpdate) (Device, error) {
 
 var kinds = []string{"unknown", "phone", "computer", "tablet", "tv", "speaker", "camera", "appliance", "console", "other"}
 
+// validKind reports whether k is one of the known device kinds (phone, TV and so on).
 func validKind(k string) bool {
 	for _, x := range kinds {
 		if x == k {
@@ -398,6 +403,8 @@ func (e *Engine) ForgetDevice(id string) error {
 	return nil
 }
 
+// copyDevice returns a copy of a device that shares no maps with the original, so callers
+// cannot change the engine's data by accident.
 func copyDevice(d *Device) Device {
 	c := *d
 	if d.CatOverride != nil {
@@ -439,6 +446,8 @@ func (e *Engine) DeviceName(id string) string {
 	return e.deviceNameLocked(id)
 }
 
+// deviceNameLocked returns a display name for a device ID, including the special IDs "*"
+// (all devices) and the overflow device. The caller must hold e.mu.
 func (e *Engine) deviceNameLocked(id string) string {
 	if id == "*" {
 		return "All devices"
@@ -466,6 +475,11 @@ func (e *Engine) DecideCNAME(devID, target string, m intel.Match) Verdict {
 	return e.decide(devID, intel.Normalize(target), m, false)
 }
 
+// decide is the heart of Vahti: it decides whether a device may look up a name. In order:
+// threats are always blocked; a pause allows everything; a matching rule wins; then the
+// device's or the default setting for the domain's category. An unknown domain is allowed,
+// except that a learning device saves it as allowed and a locked device blocks it and puts
+// it in the queue for the admin to decide.
 func (e *Engine) decide(devID, name string, m intel.Match, primary bool) Verdict {
 	now := e.now()
 	e.mu.Lock()
@@ -944,6 +958,7 @@ func (e *Engine) Related(devID, name string) (otherDevices []string, siblings []
 	return keys(devs, 10), keys(sib, 10), keys(via, 5)
 }
 
+// keys returns the map's keys sorted, at most max of them.
 func keys(m map[string]bool, max int) []string {
 	out := make([]string, 0, len(m))
 	for k := range m {

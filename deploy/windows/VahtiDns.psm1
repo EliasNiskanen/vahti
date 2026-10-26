@@ -13,6 +13,7 @@ $script:LegacyBackups = @(
 )
 $script:LegacyTaskName = 'Vahti DNS-palautus'
 
+# Appends a timestamped line to Vahti's DNS log file. Logging errors are ignored.
 function Write-VahtiLog([string]$Message) {
     try {
         if (Test-Path $script:Dir) {
@@ -29,10 +30,13 @@ function Test-VahtiDns([string]$Server = '127.0.0.1') {
     } catch { return $false }
 }
 
+# Returns the active, physical network adapters (Wi-Fi, Ethernet). Virtual adapters such as
+# Hyper-V and VPN adapters are left alone.
 function Get-VahtiAdapters {
     return @(Get-NetAdapter | Where-Object { $_.Status -eq 'Up' -and -not $_.Virtual })
 }
 
+# Returns $true if the list of DNS servers includes Vahti (127.0.0.1 or ::1).
 function Test-PointsToVahti($Addresses) {
     return [bool](@($Addresses) | Where-Object { $_ -eq '127.0.0.1' -or $_ -eq '::1' })
 }
@@ -45,6 +49,8 @@ function Protect-VahtiDir {
     if ($LASTEXITCODE -ne 0) { throw "Could not set permissions on $($script:Dir)." }
 }
 
+# Saves each adapter's current DNS settings (automatic or static servers) before Vahti
+# changes them. An existing backup is kept, so the original settings are never overwritten.
 function Save-DnsBackup {
     if (Test-Path $script:BackupFile) { return }   # keep the original backup
     $backup = foreach ($a in Get-VahtiAdapters) {
@@ -62,6 +68,8 @@ function Save-DnsBackup {
     ConvertTo-Json -InputObject @($backup) | Set-Content -Path $script:BackupFile -Encoding UTF8
 }
 
+# Creates a scheduled task that runs at startup as SYSTEM and restores the DNS settings,
+# in case the computer was shut down or crashed while Vahti was running.
 function Register-RestoreTask {
     Copy-Item -Path (Join-Path $PSScriptRoot 'VahtiDns.psm1') -Destination $script:Dir -Force
     $bootScript = Join-Path $script:Dir 'restore-at-boot.ps1'
@@ -73,6 +81,7 @@ function Register-RestoreTask {
     Register-ScheduledTask -TaskName $script:TaskName -Action $action -Trigger $trigger -Principal $principal -Description 'Restores DNS settings if the computer shut down while Vahti was running.' -Force | Out-Null
 }
 
+# Removes the startup restore task (also the one created by older versions).
 function Unregister-RestoreTask {
     foreach ($name in @($script:TaskName, $script:LegacyTaskName)) {
         Unregister-ScheduledTask -TaskName $name -Confirm:$false -ErrorAction SilentlyContinue

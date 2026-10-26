@@ -29,14 +29,19 @@ type cache struct {
 	now  func() time.Time
 }
 
+// newCache creates an answer cache that holds at most max entries (0 turns caching off).
 func newCache(max int) *cache {
 	return &cache{max: max, data: map[string]cacheEntry{}, now: time.Now}
 }
 
+// cacheKey builds the cache key from the question and the DNSSEC flags (DO and CD),
+// because answers differ with them.
 func cacheKey(q dns.Question, do bool, cd bool) string {
 	return q.Name + "|" + strconv.Itoa(int(q.Qtype)) + "|" + strconv.Itoa(int(q.Qclass)) + "|" + strconv.FormatBool(do) + strconv.FormatBool(cd)
 }
 
+// get returns a copy of a cached answer, with the TTLs reduced by the time it has spent
+// in the cache, or nil if there is none or it has expired.
 func (c *cache) get(key string) *dns.Msg {
 	if c == nil || c.max == 0 {
 		return nil
@@ -70,6 +75,9 @@ func (c *cache) get(key string) *dns.Msg {
 	return m
 }
 
+// put stores a successful or "no such name" answer for as long as its shortest TTL allows
+// (within the cache's limits). When the cache is full, expired and then arbitrary entries
+// are dropped until 10% is free.
 func (c *cache) put(key string, m *dns.Msg) {
 	if c == nil || c.max == 0 || m == nil || m.Truncated {
 		return

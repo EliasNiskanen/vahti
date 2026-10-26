@@ -50,6 +50,8 @@ function h(tag, props, ...kids) {
   add(el, kids);
   return el;
 }
+// add appends children to an element: nodes as they are, arrays recursively, and anything
+// else as plain text (never as HTML). null and false are skipped, which makes optional parts easy.
 function add(el, kids) {
   for (const k of kids) {
     if (k == null || k === false) continue;
@@ -58,6 +60,7 @@ function add(el, kids) {
     else el.appendChild(document.createTextNode(String(k)));
   }
 }
+// svgIcon draws one of the line icons (phone, TV, laptop and so on) as an SVG element.
 function svgIcon(kind, size = 18) {
   const ns = 'http://www.w3.org/2000/svg';
   const s = document.createElementNS(ns, 'svg');
@@ -73,10 +76,13 @@ function logo(size) {
   return h('img', {src: size >= 48 ? '/static/logo.svg' : '/static/icon.svg', width: size, height: size, alt: '', class: 'logo'});
 }
 const $ = (s) => document.querySelector(s);
+// Formatting helpers: time of day, date and time, a number with thousands separators,
+// and the readable name of a tracker category.
 const fmtTime = (t) => new Date(t).toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
 const fmtDateTime = (t) => new Date(t).toLocaleString('en-GB', {day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit'});
 const fmtNum = (n) => Number(n || 0).toLocaleString('en-GB');
 const catName = (c) => c ? (CATS[c] ? CATS[c].n : c) : 'Unknown';
+// ago turns a timestamp into "just now", "5 min ago", "3 h ago" or "2 d ago".
 function ago(t) {
   const s = (Date.now() - new Date(t).getTime()) / 1000;
   if (s < 60) return 'just now';
@@ -85,6 +91,7 @@ function ago(t) {
   return Math.floor(s / 86400) + ' d ago';
 }
 
+// toast shows a short message at the bottom of the screen for a few seconds.
 function toast(msg) {
   const t = $('#toast');
   t.textContent = msg; t.hidden = false;
@@ -94,6 +101,8 @@ function toast(msg) {
 // ------------------------------------------------------------------ API
 const S = {session: null, view: 'overview', data: {}, sheet: null, sheetData: null, logFilter: {action: 'all', device: '', q: ''}, busy: false};
 
+// api calls Vahti's JSON API. It sends the CSRF token with every change, and throws an error
+// with the server's message if the request fails.
 async function api(method, path, body) {
   const opt = {method, credentials: 'same-origin', headers: {}};
   if (body !== undefined) {
@@ -113,6 +122,8 @@ async function api(method, path, body) {
   return j;
 }
 
+// act runs a change (fn), shows okMsg if it succeeded or the error message if not, and
+// reloads the data so the screen is up to date.
 async function act(fn, okMsg) {
   try {
     await fn();
@@ -137,6 +148,8 @@ const VIEW_LOAD = {
   settings: async () => ({settings: await api('GET', '/api/settings')}),
 };
 
+// load fetches the data for the current view (plus the overview numbers for the header)
+// and redraws the page. If the connection fails, the page shows that Vahti is offline.
 async function load() {
   if (!S.session || !S.session.authenticated) return;
   try {
@@ -204,6 +217,7 @@ function render() {
   if (sh) sh.scrollTop = sheetScroll;
 }
 
+// tab creates one navigation tab button. Clicking it switches the view and loads its data.
 function tab(v, label, extra) {
   return h('button', {role: 'tab', 'aria-selected': S.view === v ? 'true' : 'false', onclick: () => {
     S.view = v; S.data = {o: S.data.o}; render(); load();
@@ -241,6 +255,7 @@ function vSetup() {
   ));
 }
 
+// vLogin builds the sign-in page.
 function vLogin() {
   const err = h('p', {class: 'err', hidden: true});
   const pw = h('input', {id: 'login-pw', type: 'password', autocomplete: 'current-password', required: true, maxlength: 256});
@@ -269,11 +284,14 @@ function evRow(e) {
       h('div', {class: 'mono muted'}, e.domain)),
     verdictPill(e));
 }
+// verdictPill shows a log entry's result as a coloured label: Waiting, Allowed or Blocked.
 function verdictPill(e) {
   if (e.queued) return h('span', {class: 'pill hold'}, 'Waiting');
   return h('span', {class: 'pill ' + e.action}, e.action === 'allow' ? 'Allowed' : 'Blocked');
 }
 
+// vOverview builds the home page: the numbers, a pause notice, how many decisions are
+// waiting, live traffic and what was blocked by category.
 function vOverview() {
   const o = S.data.o;
   if (!o) return [h('p', {class: 'muted'}, 'Loading…')];
@@ -303,6 +321,7 @@ function vOverview() {
     ),
   ];
 }
+// stat builds one number tile on the home page (label, value and unit).
 function stat(label, value, cls, unit) {
   return h('div', {class: 'stat'}, h('span', {class: 'eyebrow'}, label), h('b', {class: cls}, value), h('span', {class: 'muted'}, unit));
 }
@@ -327,19 +346,25 @@ function vDevices() {
   ];
 }
 
+// openSheet loads one device's details and opens them in the side panel.
 async function openSheet(id) {
   S.sheet = id;
   try { S.sheetData = await api('GET', '/api/devices/' + encodeURIComponent(id)); } catch (e) { toast(e.message); S.sheet = null; }
   render();
 }
+// closeSheet closes the device side panel. The Escape key closes it too.
 function closeSheet() { S.sheet = null; S.sheetData = null; render(); }
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && S.sheet) closeSheet(); });
 
+// vSheet builds the device side panel: name and type, how the device may use the network
+// (open, learning, locked), what it may share (per-category settings), the destinations it
+// has contacted with a rule for each, and a button to forget the device.
 function vSheet() {
   const {device: d, destinations, rules, defaults} = S.sheetData;
   const nameIn = h('input', {id: 'dev-name', value: d.name, maxlength: 60});
   const kindSel = h('select', {id: 'dev-kind', onchange: () => patch({kind: kindSel.value}, 'Type saved')},
     Object.entries(KINDS).map(([k, v]) => h('option', {value: k, selected: d.kind === k}, v)));
+  // patch saves a change to this device; ruleFor finds the device's rule for a domain.
   const patch = (body, msg) => act(() => api('PATCH', '/api/devices/' + encodeURIComponent(d.id), body), msg);
   const learnLeft = d.mode === 'learning' && d.learnUntil ? ' Learning ends ' + fmtDateTime(d.learnUntil) + '.' : '';
   const ruleFor = (dom) => (rules || []).find((r) => r.domain === dom);
@@ -386,6 +411,7 @@ function vSheet() {
   ];
 }
 
+// seg builds a segmented control (a row of buttons where one is selected), e.g. Allow/Block.
 function seg(val, opts, onpick, disabled) {
   return h('div', {class: 'seg', role: 'group'}, opts.map(([v, l, c]) => h('button', {type: 'button', class: c, 'aria-pressed': val === v ? 'true' : 'false',
     disabled: !!disabled, onclick: () => { if (val !== v) onpick(v); }}, l)));
@@ -414,9 +440,13 @@ function vQueue() {
   ];
 }
 
+// qCard builds one card in the decision queue: what the device tried to reach, who owns it,
+// what it is, related addresses and devices, and the decision buttons (allow once, for a while,
+// always, or block). The checkbox applies the decision to the whole site.
 function qCard(it) {
   const siteId = 'site-' + it.id;
   const site = h('input', {type: 'checkbox', id: siteId});
+  // decide sends the user's choice for this queue item, for this name only or the whole site.
   const decide = (decision, msg) => act(() => api('POST', '/api/queue/' + encodeURIComponent(it.id), {decision, scope: site.checked ? 'site' : 'name'}), msg);
   const facts = [
     ['Owner', it.owner ? h('b', {}, it.owner) : h('span', {class: 'muted'}, 'Not in the local database')],
@@ -452,6 +482,8 @@ function rulesList(rules) {
     h('button', {class: 'b small danger', onclick: () => act(() => api('DELETE', '/api/rules/' + encodeURIComponent(r.id)), 'Rule removed')}, 'Remove'))));
 }
 
+// vRules builds the Rules page: category defaults for all devices, the mode for new devices,
+// a form for adding a rule by hand, and the lists of your own rules and learned destinations.
 function vRules() {
   const {settings: st, rules, devices} = S.data;
   if (!st || !rules) return [h('p', {class: 'muted'}, 'Loading…')];
@@ -523,6 +555,7 @@ function vSettings() {
   const cur = h('input', {id: 'pw-cur', type: 'password', autocomplete: 'current-password', required: true, maxlength: 256});
   const nw = h('input', {id: 'pw-new', type: 'password', autocomplete: 'new-password', required: true, minlength: 12, maxlength: 256});
   const nw2 = h('input', {id: 'pw-new2', type: 'password', autocomplete: 'new-password', required: true, maxlength: 256});
+  // pause pauses protection for m minutes (0 resumes it).
   const pause = (m, msg) => act(() => api('POST', '/api/pause', {minutes: m}), msg);
   return [h('div', {class: 'grid2'},
     h('div', {class: 'stack'},

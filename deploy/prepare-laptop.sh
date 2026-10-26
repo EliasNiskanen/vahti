@@ -4,6 +4,7 @@
 # if ufw is installed, allows only DNS, the web interface and SSH from the LAN.
 set -eu
 
+# say prints a message. fail prints an error message and stops the script.
 say()  { printf '%s\n' "$*"; }
 fail() { printf 'Error: %s\n' "$*" >&2; exit 1; }
 

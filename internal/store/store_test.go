@@ -6,6 +6,8 @@ import (
 	"testing"
 )
 
+// State is saved privately and atomically with a backup copy, a half-written file
+// is recovered from the backup, and no temporary files are left behind.
 func TestAtomicSaveAndBackupRecovery(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "state.json")
