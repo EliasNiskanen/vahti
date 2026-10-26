@@ -20,6 +20,8 @@ body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:14px
 header.top{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
 .bar{display:flex;align-items:center;gap:12px;padding-block:12px;flex-wrap:wrap}
 .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px}
+.brand-lg{font-size:26px;gap:14px}
+.logo{display:block;flex:none}
 .status{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
 .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px var(--ok-soft)}
 .dot.paused{background:var(--warn);box-shadow:0 0 0 3px var(--warn-soft)}

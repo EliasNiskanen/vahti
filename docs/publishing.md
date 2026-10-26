@@ -44,6 +44,9 @@ These are GitHub settings that cannot be stored in the code.
 - [ ] Restrict creations: maintainers only
 - [ ] Restrict updates and Restrict deletions
 
+**Social preview** (Settings → General → Social preview → Edit → Upload an image)
+- [ ] Upload `assets/social-preview.png`. It is shown when the repository link is shared in chats and on social media.
+
 **Actions** (Settings → Actions → General)
 - [ ] Workflow permissions: Read repository contents
 - [ ] Allow GitHub Actions to create and approve pull requests: off

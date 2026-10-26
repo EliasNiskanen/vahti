@@ -1,4 +1,8 @@
-# Vahti
+<p align="center">
+  <img src="assets/logo.svg" width="160" alt="Vahti logo: a watchdog in a detective's deerstalker hat, holding a magnifying glass">
+</p>
+
+<h1 align="center">Vahti</h1>
 
 Vahti is a privacy filter for your home network. It acts as the network's DNS server and checks every request before anything leaves your home. Advertising, analytics, device telemetry and location-tracking services are blocked by default. You decide, device by device, what may be shared and with whom.
 

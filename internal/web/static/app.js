@@ -68,17 +68,9 @@ function svgIcon(kind, size = 18) {
   s.appendChild(p);
   return s;
 }
-function shield() {
-  const ns = 'http://www.w3.org/2000/svg';
-  const s = document.createElementNS(ns, 'svg');
-  s.setAttribute('width', '26'); s.setAttribute('height', '26'); s.setAttribute('viewBox', '0 0 26 26'); s.setAttribute('aria-hidden', 'true');
-  const a = document.createElementNS(ns, 'path');
-  a.setAttribute('d', 'M13 2 4 5.5v6.6c0 5.6 3.8 10.4 9 11.9 5.2-1.5 9-6.3 9-11.9V5.5L13 2Z'); a.setAttribute('fill', 'var(--accent)');
-  const b = document.createElementNS(ns, 'path');
-  b.setAttribute('d', 'M8.5 13.2 11.8 16.5 17.8 9.8'); b.setAttribute('stroke', 'var(--accent-fg)'); b.setAttribute('stroke-width', '2.2');
-  b.setAttribute('fill', 'none'); b.setAttribute('stroke-linecap', 'round'); b.setAttribute('stroke-linejoin', 'round');
-  s.append(a, b);
-  return s;
+// The Vahti logo: a detailed version for large sizes, a simplified one below 48 px.
+function logo(size) {
+  return h('img', {src: size >= 48 ? '/static/logo.svg' : '/static/icon.svg', width: size, height: size, alt: '', class: 'logo'});
 }
 const $ = (s) => document.querySelector(s);
 const fmtTime = (t) => new Date(t).toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
@@ -193,7 +185,7 @@ function render() {
     S.session.local ? h('div', {class: 'demo-band'}, 'Experimental local mode: Vahti filters only this computer\'s traffic. DNS settings are restored automatically when Vahti is closed.') : '',
     h('header', {class: 'top'}, h('div', {class: 'wrap'},
       h('div', {class: 'bar'},
-        h('div', {class: 'brand'}, shield(), 'Vahti'),
+        h('div', {class: 'brand'}, logo(28), 'Vahti'),
         h('div', {class: 'status'}, h('span', {class: 'dot' + (S.online === false ? ' down' : paused ? ' paused' : '')}),
           h('span', {}, S.online === false ? 'No connection to Vahti' : paused ? 'Protection paused until ' + fmtTime(o.pausedUntil).slice(0, 5) + '' : 'Protecting your home network')),
         h('div', {class: 'spacer'}),
@@ -239,7 +231,7 @@ function vSetup() {
   h('label', {class: 'field', for: 'setup-pw2'}, 'Repeat password', pw2),
   err, btn);
   return h('div', {class: 'auth'}, h('section', {class: 'panel'},
-    h('div', {class: 'brand'}, shield(), 'Vahti'),
+    h('div', {class: 'brand brand-lg'}, logo(64), 'Vahti'),
     h('h1', {}, 'Set up Vahti'),
     h('p', {class: 'muted'}, 'The setup code was printed to the Vahti log during installation. You can see it with: sudo cat /var/lib/vahti/setup-code'),
     form,
@@ -255,7 +247,7 @@ function vLogin() {
   const btn = h('button', {class: 'b primary', type: 'submit'}, 'Sign in');
   setTimeout(() => pw.focus(), 0);
   return h('div', {class: 'auth'}, h('section', {class: 'panel'},
-    h('div', {class: 'brand'}, shield(), 'Vahti'),
+    h('div', {class: 'brand brand-lg'}, logo(64), 'Vahti'),
     h('h1', {}, 'Sign in'),
     S.session.demo ? h('p', {class: 'note'}, 'Demo mode is running.') : null,
     h('form', {class: 'grid', onsubmit: async (e) => {
