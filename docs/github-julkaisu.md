@@ -4,6 +4,22 @@
 
 Koodi on repositoriossa https://github.com/EliasNiskanen/vahti, ja Go-moduulin nimi on `github.com/EliasNiskanen/vahti`.
 
+## Ennen kuin muutat repositorion julkiseksi
+
+Tee nämä tässä järjestyksessä. Repositorion muuttaminen julkiseksi tapahtuu viimeisenä.
+
+1. **Sähköpostiosoite piiloon.** GitHubissa: profiilikuva → *Settings → Emails*. Laita päälle **Keep my email addresses private** ja **Block command line pushes that expose my email**. Vahdin commit-historiassa on valmiiksi GitHubin piilo-osoite `104171824+EliasNiskanen@users.noreply.github.com`.
+2. **Kaksivaiheinen tunnistautuminen.** *Settings → Password and authentication → Enable two-factor authentication.* Valitse todennussovellus tai pääsyavain (passkey) ja tallenna palautuskoodit turvaan.
+3. **Yksityinen haavoittuvuusilmoitusten kanava.** Repositoriossa: *Settings → Code security → Private vulnerability reporting → Enable.* SECURITY.md ohjaa ilmoittajat tähän.
+4. **Pääkehityshaaran suojaus.** Repositoriossa: *Settings → Rules → Rulesets → New ruleset → New branch ruleset.* Kohteeksi *Default branch* ja valinnat alla kohdassa 2.
+5. **Muut kohdan 2 asetukset:** Dependabot, salaisuuksien skannaus ja Actions-oikeudet.
+6. **Tavaramerkki.** Hae nimeä *Vahti* ennen laajempaa markkinointia:
+   - EU ja kansalliset rekisterit yhdellä haulla: [TMview](https://www.tmdn.org/tmview/). Kirjoita hakuun `vahti` ja katso erityisesti luokat 9 (ohjelmistot) ja 42 (ohjelmistopalvelut).
+   - Suomi: Patentti- ja rekisterihallituksen tavaramerkkihaku osoitteessa [prh.fi](https://www.prh.fi/).
+   - Jos samassa luokassa löytyy voimassa oleva Vahti-merkki, harkitse nimen tarkennusta (esim. *Vahti DNS*) tai kysy neuvoa asiantuntijalta.
+7. **CI vihreäksi.** Actions-välilehdellä viimeisimmän ajon pitää olla vihreä.
+8. **Julkiseksi:** *Settings → General → Danger Zone → Change repository visibility → Make public.* CodeQL-skannaus käynnistyy tämän jälkeen automaattisesti.
+
 ## 2. Repositorion asetukset (Settings)
 
 Nämä ovat GitHubin asetuksia, joita ei voi tallentaa koodiin. Tee ne heti.
