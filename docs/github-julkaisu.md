@@ -4,9 +4,9 @@
 
 Koodi on repositoriossa https://github.com/EliasNiskanen/vahti, ja Go-moduulin nimi on `github.com/EliasNiskanen/vahti`.
 
-## Ennen kuin muutat repositorion julkiseksi
+## Repositorion julkaiseminen
 
-Tee nämä tässä järjestyksessä. Repositorion muuttaminen julkiseksi tapahtuu viimeisenä.
+Tee nämä tässä järjestyksessä: kohdat 1–5 ennen julkaisua, kohta 6 on itse julkaisu ja kohta 7 tehdään heti sen jälkeen.
 
 1. **Sähköpostiosoite piiloon.** GitHubissa: profiilikuva → *Settings → Emails*. Laita päälle **Keep my email addresses private** ja **Block command line pushes that expose my email**. Vahdin commit-historiassa on valmiiksi GitHubin piilo-osoite `104171824+EliasNiskanen@users.noreply.github.com`.
 2. **Kaksivaiheinen tunnistautuminen.** *Settings → Password and authentication → Enable two-factor authentication.* Valitse todennussovellus tai pääsyavain (passkey) ja tallenna palautuskoodit turvaan.
