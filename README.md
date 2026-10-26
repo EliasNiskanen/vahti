@@ -4,6 +4,9 @@ Vahti on kotiverkon yksityisyyssuodatin. Se toimii kotiverkon nimipalvelimena ja
 
 Vahti on täysin paikallinen. Sillä ei ole pilvipalvelua, käyttäjätiliä eikä etähallintaa, eikä se lähetä tietoja kenellekään. Ainoat yhteydet ulos ovat sallittujen nimikyselyjen välittäminen salattuna nimipalvelimelle sekä estolistojen lataus, kun pyydät sitä.
 
+> [!WARNING]
+> **Vahdin käyttöönotto muuttaa DNS-asetuksia.** Kun reititin tai tietokone ohjataan käyttämään Vahtia nimipalvelimena, internet toimii vain niin kauan kuin Vahti on käynnissä. Jos Vahti pysähtyy, laite sammuu tai sen IP-osoite vaihtuu, verkkosivut ja sovellukset lakkaavat toimimasta, vaikka yhteys muuten olisi kunnossa. Lue [DNS-asetusten muuttaminen ja palauttaminen](#dns-asetusten-muuttaminen-ja-palauttaminen) ennen käyttöönottoa.
+
 ## Mitä Vahti tekee
 
 - **Estää seurannan ennen kuin yhteys avataan.** Estetty pyyntö ei koskaan lähde kotiverkosta.
@@ -135,6 +138,26 @@ Ohje on kirjoitettu Raspberry Pi:lle, mutta se toimii samoin kaikilla Linux-kone
 - **Jos Vahti pysähtyy, netti pysähtyy.** Tämä on tarkoituksellista: suodatusta ei ohiteta huomaamatta. systemd käynnistää Vahdin automaattisesti uudelleen, jos se kaatuu tai nimipalvelu lakkaa vastaamasta 30 sekunniksi. Hätätilanteessa palauta reitittimen DNS-asetus.
 - **Unohtunut salasana:** `sudo systemctl stop vahti && sudo vahti reset-admin && sudo systemctl start vahti`
 - **Estolistat:** `sudo systemctl start vahti-update-lists` lataa listat heti. Asennusohjelma voi ottaa viikoittaisen päivityksen käyttöön.
+
+## DNS-asetusten muuttaminen ja palauttaminen
+
+Vahti toimii vain, jos laitteet kysyvät nimet siltä. Siksi käyttöönotto muuttaa joko reitittimen (koko koti) tai yhden tietokoneen (Windows-tila) DNS-asetuksia. Tämä tekee Vahdista välttämättömän osan verkkoa.
+
+**Ennen muutosta**
+- **Kirjoita alkuperäiset asetukset ylös.** Ota reitittimen DHCP- tai DNS-asetussivusta kuvakaappaus ennen kuin muutat mitään. Useimmiten DNS on asetettu automaattiseksi, jolloin reititin käyttää operaattorin nimipalvelimia.
+- **Tarkista, että Vahti vastaa.** Avaa hallintasivu ja varmista, että liikennettä näkyy ennen kuin muutat koko kodin asetukset.
+- **Kerro kotiväelle.** Jos netti lakkaa toimimasta, muiden on hyvä tietää, mistä se voi johtua ja kenelle soittaa.
+- **Varmista, että pääset reitittimen hallintaan ilman nimipalvelua.** Reitittimen osoite on yleensä IP-osoite, kuten `192.168.1.1`, joka toimii myös silloin, kun nimipalvelu ei toimi. Pidä osoite ja reitittimen salasana tallessa.
+
+**Älä lisää varapalvelinta.** Jos annat reitittimelle Vahdin rinnalle toisen DNS-palvelimen, laitteet käyttävät sitä aina välillä, ja seuranta pääsee Vahdin ohi.
+
+**Jos netti lakkaa toimimasta**
+1. **Tarkista Vahti.** Linuxissa: `systemctl status vahti`. Windowsissa: onko `vahti.exe local` -ikkuna auki?
+2. **Palauta asetukset, jos Vahtia ei saa heti toimimaan:**
+   - **Koko koti (reititin):** avaa reitittimen hallinta IP-osoitteella (esim. http://192.168.1.1), mene DHCP- tai LAN-asetuksiin ja palauta DNS-palvelimeksi *automaattinen* tai ylös kirjoittamasi alkuperäiset osoitteet. Kytke laitteiden wifi hetkeksi pois ja takaisin, jotta ne saavat uuden asetuksen.
+   - **Windows-tila:** aja järjestelmänvalvojana `powershell -ExecutionPolicy Bypass -File .\palauta-dns.ps1`. Jos skriptiä ei ole käsillä: *Asetukset → Verkko ja Internet → Wi-Fi tai Ethernet → yhteyden ominaisuudet → DNS-palvelimen määritys → Muokkaa → Automaattinen (DHCP)*.
+
+**Vahdin poistaminen:** palauta DNS-asetukset aina *ennen* kuin poistat Vahdin tai sammutat laitteen pysyvästi. Poisto-ohjelma (`uninstall.sh`) muistuttaa tästä.
 
 ## Asetukset
 

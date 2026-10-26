@@ -13,6 +13,7 @@ Kaikki merkittävät muutokset kirjataan tähän tiedostoon. Muoto noudattaa [Ke
 - Käyttöliittymään ilmoitus, kun Vahti toimii paikallisessa tilassa.
 - Windows-paketti (`windows_amd64.zip`) julkaisuihin, ja Windows-käännös ja PowerShell-skriptien tarkistus CI:hin.
 - Ohjeet: [docs/windows.md](docs/windows.md) ja Windows-tila README-tiedostoon.
+- README-tiedostoon varoitus DNS-asetusten muuttamisesta sekä ohje asetusten muuttamiseen ja palauttamiseen.
 
 ## [0.1.0] - 2026-10-26
 
