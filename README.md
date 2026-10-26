@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.svg" width="160" alt="Vahti logo: a watchdog in a detective's deerstalker hat, with a monocle and a pipe">
+  <img src="assets/logo.svg" width="160" alt="Vahti logo: a watchdog in a detective's fedora, with a monocle and a pipe">
 </p>
 
 <h1 align="center">Vahti</h1>

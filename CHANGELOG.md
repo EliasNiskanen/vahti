@@ -5,7 +5,7 @@ All notable changes are recorded in this file. The format follows [Keep a Change
 ## [Unreleased]
 
 ### Added
-- Logo: a watchdog in a detective's deerstalker hat and cape, with a monocle and a calabash pipe. A detailed version (`assets/logo.svg`) for 48 px and up and a simplified one (`assets/logo-small.svg`) for small sizes such as the browser tab. Used in the web interface and README, plus a social preview image (`assets/social-preview.png`).
+- Logo: a watchdog in a detective's fedora and cape, with a monocle and a calabash pipe. A detailed version (`assets/logo.svg`) for 48 px and up and a simplified one (`assets/logo-small.svg`) for small sizes such as the browser tab. Used in the web interface and README, plus a social preview image (`assets/social-preview.png`).
 
 ## [0.1.0] - 2026-10-26
 
