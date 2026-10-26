@@ -1,0 +1,6 @@
+/vahti
+/dist/
+/build/
+/vahti-demo/
+*.out
+*.test

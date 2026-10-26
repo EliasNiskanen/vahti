@@ -1,0 +1,29 @@
+[Unit]
+Description=Vahti - estolistojen päivitys
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=vahti
+Group=vahti
+ExecStart=/usr/local/bin/vahti update-lists -config /etc/vahti/config.json
+# "+" runs this one command with privileges so the service can be reloaded.
+ExecStartPost=+/bin/systemctl reload vahti.service
+StateDirectory=vahti
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+UMask=0022
