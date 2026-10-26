@@ -85,12 +85,12 @@ func ValidatePassword(pw string) error {
 	return nil
 }
 
-// PasswordMessage explains a ValidatePassword error in Finnish.
+// PasswordMessage explains a ValidatePassword error to the user.
 func PasswordMessage(err error) string {
 	if errors.Is(err, ErrPasswordLong) {
-		return "Salasana on liian pitkä (enintään 256 merkkiä)."
+		return "The password is too long (256 characters at most)."
 	}
-	return "Salasanassa pitää olla vähintään 12 merkkiä."
+	return "The password must be at least 12 characters long."
 }
 
 // NewSetupCode returns a human-friendly one-time code and its hash.

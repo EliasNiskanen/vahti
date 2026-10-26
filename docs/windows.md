@@ -1,85 +1,87 @@
-# Kokeellinen Windows-tila
+# Experimental Windows mode
 
-Windows-tilassa Vahti suodattaa **vain sen tietokoneen** liikenteen, jolla se on käynnissä. Näet esimerkiksi Windowsin oman telemetrian sekä selaimen ja ohjelmien seurantapalvelut, ja voit estää niitä. Muiden kodin laitteiden suojaamiseen tarvitaan Vahti Raspberry Pi:llä tai vanhalla kannettavalla (ks. [README](../README.md#laitteisto)).
+In Windows mode, Vahti filters **only the computer** it runs on. You can see, for example, Windows' own telemetry and the tracking services used by your browser and programs, and block them. Protecting the other devices in your home needs Vahti on a Raspberry Pi or an old laptop (see the [README](../README.md#hardware)).
 
-Tila on kokeellinen: sitä ei ole vielä testattu laajasti oikeilla Windows-koneilla. Kerro, jos jokin ei toimi.
+This mode is experimental: it has not yet been tested widely on real Windows computers. Please report anything that does not work.
 
-## Käyttöönotto
+## Setup
 
-Pura `vahti_<versio>_windows_amd64.zip` esimerkiksi kansioon `C:\Vahti`. Avaa PowerShell kansiossa (Shift + hiiren oikea painike kansion tyhjässä kohdassa → *Avaa PowerShell-ikkuna tässä*).
+Extract `vahti_<version>_windows_amd64.zip`, for example to `C:\Vahti`. Open PowerShell in the folder (Shift + right-click on an empty spot in the folder → *Open PowerShell window here*).
 
-**1. Käynnistä Vahti:**
+**1. Start Vahti:**
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\kaynnista-vahti.ps1
+powershell -ExecutionPolicy Bypass -File .\start-vahti.ps1
 ```
 
-Vahti avautuu omaan ikkunaansa. Kun se vastaa, Windows kysyy lupaa DNS-asetusten muuttamiseen. Hyväksy, niin koneen nimikyselyt ohjataan Vahdille.
+Vahti opens in its own window. Once it answers, Windows asks for permission to change the DNS settings. Accept, and the computer's DNS queries are sent to Vahti.
 
-**2. Ota Vahti käyttöön ja aseta salasana.** Avaa selaimessa http://127.0.0.1:8080 ja syötä Vahdin ikkunaan tulostunut käyttöönottokoodi. Tämä tehdään vain ensimmäisellä kerralla.
+**2. Set up Vahti and choose a password.** Open http://127.0.0.1:8080 in your browser and enter the setup code shown in the Vahti window. You only do this the first time.
 
-**3. Lataa estolistat (suositeltava).** Tavallisessa PowerShell-ikkunassa:
+**3. Download blocklists (recommended).** In a normal PowerShell window:
 
 ```powershell
 .\vahti.exe update-lists -local
 ```
 
-Vahti ottaa listat käyttöön puolen minuutin kuluessa.
+Vahti picks up the lists within 30 seconds.
 
-**4. Kytke selaimen oma salattu DNS pois.** Chromessa ja Edgessä: Asetukset → Tietosuoja ja suojaus → *Käytä suojattua DNS:ää* → pois. Muuten selain voi ohittaa Vahdin. Firefoxissa Vahti kytkee tämän pois automaattisesti.
+**4. Turn off the browser's own encrypted DNS.** In Chrome and Edge: Settings → Privacy and security → *Use secure DNS* → off. Otherwise the browser may bypass Vahti. In Firefox, Vahti turns this off automatically.
 
-Nyt Vahdin Yleiskuva-näkymässä näkyy laite *Tämä tietokone* ja sen oikea liikenne.
+The device *This computer* and its real traffic now appear in Vahti's Overview.
 
-## Lopetus
+## Stopping
 
-Sulje Vahdin ikkuna tai paina siinä Ctrl+C. **DNS-asetukset palautetaan automaattisesti** muutaman sekunnin kuluessa.
+Close the Vahti window or press Ctrl+C in it. **DNS settings are restored automatically** within a few seconds.
 
-## Miten DNS-asetusten palautus toimii
+## How the DNS restore works
 
-Vahti itse toimii ilman järjestelmänvalvojan oikeuksia, joten se ei voi muuttaa koneen asetuksia. DNS-asetuksista huolehtii erillinen **vartija** (`dns-vartija.ps1`), jolle annat luvan käynnistyksen yhteydessä. Vartija:
+Vahti itself runs without administrator rights, so it cannot change the computer's settings. A separate **guard** (`dns-guard.ps1`), which you give permission to at startup, takes care of the DNS settings. The guard:
 
-1. tallentaa koneen alkuperäiset DNS-asetukset, myös käsin asetetut osoitteet
-2. ohjaa nimikyselyt Vahdille
-3. palauttaa alkuperäiset asetukset heti, kun Vahti suljetaan, kaatuu tai lakkaa vastaamasta 15 sekunniksi.
+1. saves the computer's original DNS settings, including manually set servers
+2. points DNS at Vahti
+3. restores the original settings as soon as Vahti is closed, crashes or stops answering for 15 seconds.
 
-Jos kone sammuu tai sähköt katkeavat Vahdin ollessa käynnissä, asetukset palautetaan **seuraavassa käynnistyksessä**. Tätä varten vartija luo Windowsin tehtävien ajoitukseen tehtävän *Vahti DNS-palautus*. Tehtävä poistuu, kun asetukset on palautettu.
+If the computer shuts down or the power goes out while Vahti is running, the settings are restored **at the next startup**. For this, the guard creates the task *Vahti DNS restore* in Windows Task Scheduler. The task removes itself after the settings are restored.
 
-Varmuuskopio, palautusskripti ja tapahtumaloki (`dns.log`) ovat kansiossa `%ProgramData%\Vahti`. Kansiota voivat muuttaa vain järjestelmä ja järjestelmänvalvojat, jotta kukaan ei voi muuttaa käynnistyksessä ajettavaa skriptiä.
+The backup, the restore script and the event log (`dns.log`) are in `%ProgramData%\Vahti`. Only SYSTEM and administrators can change this folder, so nobody can tamper with the script that runs at startup.
 
-## Tarkista, että asetukset ovat normaalit
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\tarkista-dns.ps1
-```
-
-Skripti näyttää jokaisen verkkosovittimen nimipalvelimet ja kertoo, onko Vahti käynnissä, ohjautuvatko kyselyt sille ja toimiiko nimipalvelu. Se ei muuta mitään eikä vaadi järjestelmänvalvojan oikeuksia.
-
-## Jos netti ei toimi
-
-Aja järjestelmänvalvojana:
+## Check that the settings are normal
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\palauta-dns.ps1
+powershell -ExecutionPolicy Bypass -File .\check-dns.ps1
 ```
 
-Skripti palauttaa asetukset varmuuskopiosta. Jos varmuuskopiota ei ole, se asettaa Vahtiin osoittavat sovittimet automaattisiksi. Jos skriptiä ei ole käsillä: *Asetukset → Verkko ja Internet → Wi-Fi tai Ethernet → yhteyden ominaisuudet → DNS-palvelimen määritys → Muokkaa → Automaattinen (DHCP)*.
+The script shows the DNS servers for each network adapter and tells you whether Vahti is running, whether queries go to it and whether DNS resolution works. It changes nothing and needs no administrator rights.
 
-## Hyvä tietää
+## If the internet does not work
 
-- **Kotiverkon laitenimet:** Jos käytät nimiä kuten `tulostin.lan` tai `fritz.box`, käynnistä Vahti reitittimen osoitteella: `.\kaynnista-vahti.ps1 -Router 192.168.1.1`.
-- **Portti 53 varattu:** Jos Vahti ilmoittaa, että portti 53 on käytössä, jokin muu ohjelma toimii jo nimipalvelimena, esim. Internet-yhteyden jakaminen, Hyper-V tai WSL. Näet ohjelman komennolla `Get-NetUDPEndpoint -LocalPort 53`.
-- **VPN-ohjelmat** asettavat usein oman nimipalvelimensa. Kun VPN on päällä, liikenne voi ohittaa Vahdin.
-- **SmartScreen** voi varoittaa, koska `vahti.exe` ei ole allekirjoitettu Microsoftin varmenteella. Julkaisun aitouden voi tarkistaa komennolla `gh attestation verify vahti_*_windows_amd64.zip --repo EliasNiskanen/vahti`.
-- **Vahdin tiedot** (asetukset, salasanan tiiviste) tallentuvat kansioon `%LOCALAPPDATA%\Vahti`. Loki on vain muistissa, kuten Linux-versiossa.
-- **Rajoitukset:** Vahti ei käynnisty automaattisesti Windowsin mukana, eikä sitä ole eristetty samalla tavalla kuin Linux-palvelua. Siksi Windows-tila sopii kokeiluun ja oman koneen tarkasteluun. Jatkuvaan koko kodin suojaukseen käytä Linux-laitetta.
+Run as administrator:
 
-## Skriptit
+```powershell
+powershell -ExecutionPolicy Bypass -File .\restore-dns.ps1
+```
 
-| Tiedosto | Tehtävä | Järjestelmänvalvoja |
+The script restores the settings from the backup. Without a backup, it sets adapters that point to Vahti back to automatic. Without the script: *Settings → Network & Internet → Wi-Fi or Ethernet → connection properties → DNS server assignment → Edit → Automatic (DHCP)*.
+
+## Good to know
+
+- **Local device names:** If you use names such as `printer.lan` or `fritz.box`, start Vahti with your router's address: `.\start-vahti.ps1 -Router 192.168.1.1`.
+- **Port 53 in use:** If Vahti reports that port 53 is in use, another program is already acting as a DNS server, e.g. Internet Connection Sharing, Hyper-V or WSL. See which one with `Get-NetUDPEndpoint -LocalPort 53`.
+- **VPN programs** often set their own DNS server. While a VPN is connected, traffic may bypass Vahti.
+- **SmartScreen** may warn because `vahti.exe` is not signed with a Microsoft certificate. You can check a release is genuine with `gh attestation verify vahti_*_windows_amd64.zip --repo EliasNiskanen/vahti`.
+- **Vahti's data** (settings, password hash) is stored in `%LOCALAPPDATA%\Vahti`. The log is kept only in memory, as in the Linux version.
+- **Limitations:** Vahti does not start with Windows and does not restart if it crashes, and it is not sandboxed like the Linux service. Windows mode is therefore meant for trying Vahti out and looking at your own computer's traffic. For continuous protection of the whole home, use a Linux device.
+
+## Scripts
+
+| File | Purpose | Administrator |
 |---|---|---|
-| `kaynnista-vahti.ps1` | Käynnistää Vahdin ja vartijan. Suositeltu tapa. | Kysyy luvan |
-| `tarkista-dns.ps1` | Näyttää DNS-asetusten tilan. Ei muuta mitään. | Ei |
-| `palauta-dns.ps1` | Palauttaa asetukset käsin. | Kyllä |
-| `kayta-vahtia.ps1` | Käynnistää vartijan jo käynnissä olevalle Vahdille. | Kyllä |
-| `dns-vartija.ps1` | Vartija. Muut skriptit käynnistävät sen. | Kyllä |
-| `VahtiDns.psm1` | Yhteiset toiminnot. | – |
+| `start-vahti.ps1` | Starts Vahti and the guard. The recommended way. | Asks for permission |
+| `check-dns.ps1` | Shows the state of the DNS settings. Changes nothing. | No |
+| `restore-dns.ps1` | Restores the settings by hand. | Yes |
+| `use-vahti.ps1` | Starts the guard for a Vahti that is already running. | Yes |
+| `dns-guard.ps1` | The guard. Started by the other scripts. | Yes |
+| `VahtiDns.psm1` | Shared functions. | – |
+
+Scripts from earlier versions had Finnish names (`kaynnista-vahti.ps1`, `palauta-dns.ps1` etc.). Backups made by them are still recognised and restored.

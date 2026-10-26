@@ -1,5 +1,5 @@
 [Unit]
-Description=Vahti - estolistojen päivitys kerran viikossa
+Description=Vahti - weekly blocklist update
 
 [Timer]
 OnCalendar=weekly

@@ -273,9 +273,9 @@ func (e *Engine) Identify(ip netip.Addr, mac string) string {
 
 func defaultName(ip netip.Addr) string {
 	if ip.IsLoopback() {
-		return "Vahti-laite itse"
+		return "Vahti device itself"
 	}
-	return "Uusi laite " + ip.String()
+	return "New device " + ip.String()
 }
 
 // SetDeviceNameHint names a device if the user has not named it yet.
@@ -283,7 +283,7 @@ func (e *Engine) SetDeviceNameHint(id, name string) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	d := e.st.Devices[id]
-	if d == nil || name == "" || !strings.HasPrefix(d.Name, "Uusi laite ") {
+	if d == nil || name == "" || !strings.HasPrefix(d.Name, "New device ") {
 		return
 	}
 	d.Name = name
@@ -441,10 +441,10 @@ func (e *Engine) DeviceName(id string) string {
 
 func (e *Engine) deviceNameLocked(id string) string {
 	if id == "*" {
-		return "Kaikki laitteet"
+		return "All devices"
 	}
 	if id == OverflowDevice {
-		return "Muut laitteet"
+		return "Other devices"
 	}
 	if d := e.st.Devices[id]; d != nil {
 		return d.Name
@@ -472,24 +472,24 @@ func (e *Engine) decide(devID, name string, m intel.Match, primary bool) Verdict
 	defer e.mu.Unlock()
 	cat := m.Category
 	if cat == intel.Threat {
-		return Verdict{Block, "Uhkalista", cat, false}
+		return Verdict{Block, "Threat list", cat, false}
 	}
 	if now.Before(e.st.Settings.PausedUntil) {
-		return Verdict{Allow, "Suojaus tauolla", cat, false}
+		return Verdict{Allow, "Protection paused", cat, false}
 	}
 	if r := e.matchRuleLocked(devID, name, now); r != nil {
-		reason := "Oma sääntö"
+		reason := "Your rule"
 		switch {
 		case r.Once:
-			reason = "Kertalupa"
+			reason = "One-time permission"
 			delete(e.st.Rules, r.ID)
 			e.dirty = true
 		case !r.Until.IsZero():
-			reason = "Määräaikainen lupa"
+			reason = "Temporary permission"
 		case r.Source == "learned":
-			reason = "Opittu kohde"
+			reason = "Learned destination"
 		case r.Device == "*":
-			reason = "Yhteinen sääntö"
+			reason = "Rule for all devices"
 		}
 		return Verdict{r.Action, reason, cat, false}
 	}
@@ -497,13 +497,13 @@ func (e *Engine) decide(devID, name string, m intel.Match, primary bool) Verdict
 	if cat != "" {
 		if d != nil {
 			if a, ok := d.CatOverride[cat]; ok {
-				return Verdict{a, "Laitekohtainen asetus", cat, false}
+				return Verdict{a, "Device setting", cat, false}
 			}
 		}
-		return Verdict{e.st.Settings.CategoryDefaults[cat], "Oletusasetus", cat, false}
+		return Verdict{e.st.Settings.CategoryDefaults[cat], "Default setting", cat, false}
 	}
 	if d == nil || !primary {
-		return Verdict{Allow, "Tuntematon kohde", "", false}
+		return Verdict{Allow, "Unknown destination", "", false}
 	}
 	if d.Mode == Learning && !now.Before(d.LearnUntil) {
 		d.Mode = Locked
@@ -513,13 +513,13 @@ func (e *Engine) decide(devID, name string, m intel.Match, primary bool) Verdict
 	switch d.Mode {
 	case Learning:
 		if len(e.st.Rules) >= MaxRules {
-			return Verdict{Allow, "Opettelu: sääntöjen enimmäismäärä täynnä", "", false}
+			return Verdict{Allow, "Learning: rule limit reached", "", false}
 		}
 		site := intel.Registrable(name)
 		r := &Rule{ID: newID(), Device: devID, Domain: site, Action: Allow, Source: "learned", Created: now}
 		e.st.Rules[r.ID] = r
 		e.dirty = true
-		return Verdict{Allow, "Opettelu: kohde tallennettiin sallituksi", "", false}
+		return Verdict{Allow, "Learning: destination saved as allowed", "", false}
 	case Locked:
 		var q *QueueItem
 		for _, it := range e.st.Queue {
@@ -530,7 +530,7 @@ func (e *Engine) decide(devID, name string, m intel.Match, primary bool) Verdict
 		}
 		if q == nil {
 			if len(e.st.Queue) >= 500 {
-				return Verdict{Block, "Lukittu laite: jono on täynnä", "", false}
+				return Verdict{Block, "Locked device: queue is full", "", false}
 			}
 			q = &QueueItem{ID: newID(), Device: devID, Domain: name, First: now}
 			e.st.Queue[q.ID] = q
@@ -538,9 +538,9 @@ func (e *Engine) decide(devID, name string, m intel.Match, primary bool) Verdict
 		q.Count++
 		q.Last = now
 		e.dirty = true
-		return Verdict{Block, "Odottaa päätöstäsi", "", true}
+		return Verdict{Block, "Waiting for your decision", "", true}
 	}
-	return Verdict{Allow, "Tuntematon kohde", "", false}
+	return Verdict{Allow, "Unknown destination", "", false}
 }
 
 // matchRuleLocked finds the most specific live rule for device, then global.

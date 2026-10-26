@@ -5,12 +5,12 @@
 set -eu
 
 say()  { printf '%s\n' "$*"; }
-fail() { printf 'Virhe: %s\n' "$*" >&2; exit 1; }
+fail() { printf 'Error: %s\n' "$*" >&2; exit 1; }
 
-[ "$(id -u)" -eq 0 ] || fail "aja pääkäyttäjänä: sudo ./prepare-laptop.sh"
-command -v systemctl >/dev/null 2>&1 || fail "systemd puuttuu."
+[ "$(id -u)" -eq 0 ] || fail "run as root: sudo ./prepare-laptop.sh"
+command -v systemctl >/dev/null 2>&1 || fail "systemd is missing."
 
-say "1/4 Kannen sulkeminen ei laita konetta lepotilaan..."
+say "1/4 Closing the lid will not put the computer to sleep..."
 mkdir -p /etc/systemd/logind.conf.d
 cat > /etc/systemd/logind.conf.d/vahti-lid.conf <<'EOF'
 [Login]
@@ -18,12 +18,12 @@ HandleLidSwitch=ignore
 HandleLidSwitchExternalPower=ignore
 HandleLidSwitchDocked=ignore
 EOF
-systemctl restart systemd-logind || say "  Uudelleenkäynnistä kone, jotta kansiasetus tulee voimaan."
+systemctl restart systemd-logind || say "  Restart the computer for the lid setting to take effect."
 
-say "2/4 Lepo- ja horrostila pois käytöstä..."
+say "2/4 Turning off sleep and hibernation..."
 systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target >/dev/null
 
-say "3/4 Automaattiset tietoturvapäivitykset..."
+say "3/4 Automatic security updates..."
 if command -v apt-get >/dev/null 2>&1; then
 	DEBIAN_FRONTEND=noninteractive apt-get install -y -q unattended-upgrades >/dev/null
 	cat > /etc/apt/apt.conf.d/20auto-upgrades <<'EOF'
@@ -31,10 +31,10 @@ APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Unattended-Upgrade "1";
 EOF
 else
-	say "  apt puuttuu, ohitetaan. Huolehdi päivityksistä itse."
+	say "  apt is missing, skipping. Keep the system updated yourself."
 fi
 
-say "4/4 Palomuuri..."
+say "4/4 Firewall..."
 if command -v ufw >/dev/null 2>&1; then
 	for net in 10.0.0.0/8 172.16.0.0/12 192.168.0.0/16; do
 		ufw allow from "$net" to any port 53 >/dev/null
@@ -44,11 +44,11 @@ if command -v ufw >/dev/null 2>&1; then
 	ufw default deny incoming >/dev/null
 	ufw default allow outgoing >/dev/null
 	ufw --force enable >/dev/null
-	say "  Palomuuri päällä: sisään vain DNS, hallintasivu ja SSH kotiverkosta."
+	say "  Firewall on: only DNS, the web interface and SSH from the home network are allowed in."
 else
-	say "  ufw puuttuu. Asenna halutessasi: sudo apt install ufw ja aja tämä uudelleen."
+	say "  ufw is missing. If you want it: sudo apt install ufw and run this again."
 fi
 
 say ""
-say "Valmis. Kone pysyy päällä kansi kiinni. Asenna seuraavaksi Vahti: sudo ./install.sh"
-say "Vinkki: rajoita akun lataus 60-80 %:iin BIOSista, jos mahdollista."
+say "Done. The computer stays on with the lid closed. Next, install Vahti: sudo ./install.sh"
+say "Tip: limit battery charging to 60-80 % in the BIOS if possible."

@@ -37,7 +37,7 @@ func (s *Server) apiSession(w http.ResponseWriter, r *http.Request) {
 func (s *Server) wait(w http.ResponseWriter, r *http.Request) bool {
 	if d := s.thr.check(clientAddr(r)); d > 0 {
 		w.Header().Set("Retry-After", strconv.Itoa(int(d.Seconds())+1))
-		writeErr(w, http.StatusTooManyRequests, "Liian monta yritystä. Odota "+humanDur(d)+" ja yritä uudelleen.")
+		writeErr(w, http.StatusTooManyRequests, "Too many attempts. Wait "+humanDur(d)+" and try again.")
 		return true
 	}
 	return false
@@ -45,9 +45,9 @@ func (s *Server) wait(w http.ResponseWriter, r *http.Request) bool {
 
 func humanDur(d time.Duration) string {
 	if d < time.Minute {
-		return strconv.Itoa(int(d.Seconds())+1) + " sekuntia"
+		return strconv.Itoa(int(d.Seconds())+1) + " seconds"
 	}
-	return strconv.Itoa(int(d.Minutes())+1) + " minuuttia"
+	return strconv.Itoa(int(d.Minutes())+1) + " minutes"
 }
 
 func (s *Server) apiSetup(w http.ResponseWriter, r *http.Request) {
@@ -62,12 +62,12 @@ func (s *Server) apiSetup(w http.ResponseWriter, r *http.Request) {
 	defer s.setupMu.Unlock()
 	adm := s.eng.Admin()
 	if adm.PasswordHash != "" {
-		writeErr(w, http.StatusConflict, "Vahti on jo otettu käyttöön. Kirjaudu sisään.")
+		writeErr(w, http.StatusConflict, "Vahti is already set up. Sign in.")
 		return
 	}
 	if adm.SetupCodeHash == "" || subtle.ConstantTimeCompare([]byte(HashSetupCode(in.Code)), []byte(adm.SetupCodeHash)) != 1 {
 		s.thr.fail(clientAddr(r))
-		writeErr(w, http.StatusForbidden, "Käyttöönottokoodi ei täsmää. Koodi näkyy Vahti-laitteen lokissa ja tiedostossa "+s.cfg.SetupCodePath+".")
+		writeErr(w, http.StatusForbidden, "The setup code does not match. The code is shown in the Vahti log and in the file "+s.cfg.SetupCodePath+".")
 		return
 	}
 	if err := ValidatePassword(in.Password); err != nil {
@@ -99,13 +99,13 @@ func (s *Server) apiLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	adm := s.eng.Admin()
 	if adm.PasswordHash == "" {
-		writeErr(w, http.StatusConflict, "Vahtia ei ole vielä otettu käyttöön.")
+		writeErr(w, http.StatusConflict, "Vahti has not been set up yet.")
 		return
 	}
 	if len(in.Password) > 256 || !VerifyPassword(adm.PasswordHash, in.Password) {
 		s.thr.fail(clientAddr(r))
 		slog.Warn("failed login", "client", clientAddr(r))
-		writeErr(w, http.StatusUnauthorized, "Salasana on väärä.")
+		writeErr(w, http.StatusUnauthorized, "Wrong password.")
 		return
 	}
 	s.thr.success(clientAddr(r))
@@ -130,7 +130,7 @@ func (s *Server) apiPassword(w http.ResponseWriter, r *http.Request, tok string)
 	}
 	if len(in.Current) > 256 || !VerifyPassword(s.eng.Admin().PasswordHash, in.Current) {
 		s.thr.fail(clientAddr(r))
-		writeErr(w, http.StatusForbidden, "Nykyinen salasana on väärä.")
+		writeErr(w, http.StatusForbidden, "The current password is wrong.")
 		return
 	}
 	if err := ValidatePassword(in.Next); err != nil {
@@ -185,7 +185,7 @@ func (s *Server) apiOverview(w http.ResponseWriter, r *http.Request, _ string) {
 		if s.cfg.Local {
 			cmd = ".\\vahti.exe update-lists -local"
 		}
-		warnings = append(warnings, "Estolistoja ei ole ladattu, joten Vahti tunnistaa vain sisäänrakennetut noin 50 seurantapalvelua. Lataa listat komennolla: "+cmd)
+		warnings = append(warnings, "No blocklists are loaded, so Vahti only recognises its ~50 built-in tracking services. Download the lists with: "+cmd)
 	}
 	out := map[string]any{
 		"allowed":    total.Allowed,
@@ -418,11 +418,11 @@ func (s *Server) apiLog(w http.ResponseWriter, r *http.Request, _ string) {
 		f.Action = engine.Action(a)
 	case "", "all":
 	default:
-		writeErr(w, http.StatusBadRequest, "Tuntematon suodatin.")
+		writeErr(w, http.StatusBadRequest, "Unknown filter.")
 		return
 	}
 	if len(f.Query) > 253 || len(f.Device) > 100 {
-		writeErr(w, http.StatusBadRequest, "Haku on liian pitkä.")
+		writeErr(w, http.StatusBadRequest, "The search is too long.")
 		return
 	}
 	f.Limit, _ = strconv.Atoi(q.Get("limit"))

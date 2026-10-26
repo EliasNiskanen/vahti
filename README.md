@@ -1,219 +1,221 @@
 # Vahti
 
-Vahti on kotiverkon yksityisyyssuodatin. Se toimii kotiverkon nimipalvelimena ja tarkistaa jokaisen pyynnön ennen kuin mitään lähtee kotoa. Mainonta, analytiikka, laitteiden telemetria ja sijaintia keräävät palvelut estetään oletuksena. Sinä päätät laitekohtaisesti, mitä saa jakaa ja kenelle.
+Vahti is a privacy filter for your home network. It acts as the network's DNS server and checks every request before anything leaves your home. Advertising, analytics, device telemetry and location-tracking services are blocked by default. You decide, device by device, what may be shared and with whom.
 
-Vahti on täysin paikallinen. Sillä ei ole pilvipalvelua, käyttäjätiliä eikä etähallintaa, eikä se lähetä tietoja kenellekään. Ainoat yhteydet ulos ovat sallittujen nimikyselyjen välittäminen salattuna nimipalvelimelle sekä estolistojen lataus, kun pyydät sitä.
+Vahti is fully local. It has no cloud service, no user account and no remote management, and it sends no data to anyone. The only outbound connections are allowed DNS queries, forwarded encrypted to a DNS resolver, and blocklist downloads when you ask for them.
+
+*Vahti* is Finnish for "guard" or "watch".
 
 > [!IMPORTANT]
-> **Vahti on harrastusprojekti ja kehitysvaiheessa.** Älä luota siihen kriittisenä suojauksena.
-> - Ulkopuolista tietoturvatarkastusta ei ole tehty.
-> - Asennusohjelmaa ei ole vielä ajettu oikealla Raspberry Pi:llä tai kannettavalla, eikä Windowsin DNS-vartijaa oikealla Windows-koneella. Asennusohjelma on tarkistettu automaattisesti (shellcheck), ja vartijan palautuslogiikka on testattu simuloiduilla verkkosovittimilla.
-> - Automaattiset testit, staticcheck ja haavoittuvuustarkistus ajetaan jokaisen muutoksen yhteydessä, mutta ne eivät korvaa tarkastusta.
+> **Vahti is a hobby project and in development.** Do not rely on it as critical protection.
+> - No external security audit has been done.
+> - The installer has not yet been run on a real Raspberry Pi or laptop, and the Windows DNS guard has not been run on a real Windows computer. The installer is checked automatically (shellcheck), and the guard's restore logic is tested with simulated network adapters.
+> - Automated tests, staticcheck and a vulnerability check run on every change, but they are no substitute for an audit.
 >
-> Ylläpidän projektia vapaa-ajallani. Vastaan issueihin ja korjaan ongelmia, kun ehdin, mutta en voi luvata aikataulua. Tietoturvaongelmista ilmoittaminen: [SECURITY.md](SECURITY.md).
+> I maintain the project in my free time. I respond to issues and fix problems when I can, but I cannot promise a schedule. To report a security problem, see [SECURITY.md](SECURITY.md).
 
 > [!WARNING]
-> **Vahdin käyttöönotto muuttaa DNS-asetuksia.** Kun reititin tai tietokone ohjataan käyttämään Vahtia nimipalvelimena, internet toimii vain niin kauan kuin Vahti on käynnissä. Jos Vahti pysähtyy, laite sammuu tai sen IP-osoite vaihtuu, verkkosivut ja sovellukset lakkaavat toimimasta, vaikka yhteys muuten olisi kunnossa. Lue [DNS-asetusten muuttaminen ja palauttaminen](#dns-asetusten-muuttaminen-ja-palauttaminen) ennen käyttöönottoa.
+> **Setting up Vahti changes your DNS settings.** Once your router or computer uses Vahti as its DNS server, the internet works only while Vahti is running. If Vahti stops, the device shuts down or its IP address changes, websites and apps stop working even though the connection itself is fine. Read [Changing and restoring DNS settings](#changing-and-restoring-dns-settings) before you start.
 
-## Mitä Vahti tekee
+## What Vahti does
 
-- **Estää seurannan ennen kuin yhteys avataan.** Estetty pyyntö ei koskaan lähde kotiverkosta.
-- **Tunnistaa laitteet** ja näyttää jokaisesta, mihin se on yrittänyt ottaa yhteyttä.
-- **Kolme tilaa laitteille:**
-  - *Avoin*: tunnetut seurantapalvelut estetään, kaikki muu toimii. Sopii puhelimille ja tietokoneille.
-  - *Opettelee*: laite toimii vapaasti, ja Vahti tallentaa sen tarvitsemat palvelut. Opettelun jälkeen laite lukitaan.
-  - *Lukittu*: vain sallitut kohteet toimivat. Uudet kohteet estetään ja tuodaan sinulle päätettäviksi. Sopii älylaitteille.
-- **Hyväksymisjono:** näet, mihin kohde liittyy (omistaja, saman sivuston muut osoitteet, muut laitteet), ja voit sallia sen kerran, tunniksi tai pysyvästi tai estää sen.
-- **Jakaminen jälkikäteen:** voit sallia estetyn kohteen määräajaksi laitteen sivulta.
-- **Naamioidun seurannan tunnistus:** jos sivuston oma osoite ohjautuu (CNAME) seurantapalveluun, se estetään.
-- **Ohitusyritysten esto:** selainten oma salattu DNS ja iCloud Private Relay kytketään pois, ja tunnetut salatut DNS-palvelut estetään.
-- **Ei sijaintivihjeitä:** Vahti ei välitä laitteiden aliverkkotietoa (EDNS Client Subnet) eteenpäin, ja kotiverkon sisäiset nimet eivät koskaan lähde internetiin.
+- **Blocks tracking before the connection opens.** A blocked request never leaves your home network.
+- **Recognises devices** and shows what each one has tried to reach.
+- **Three modes per device:**
+  - *Open*: known tracking services are blocked, everything else works. Suits phones and computers.
+  - *Learning*: the device works freely while Vahti records the services it needs. When learning ends, the device is locked.
+  - *Locked*: only allowed destinations work. New destinations are blocked and brought to you for a decision. Suits smart devices.
+- **Approval queue:** see what a destination is linked to (owner, other addresses on the same site, other devices) and allow it once, for an hour or permanently, or block it.
+- **Share afterwards:** allow a blocked destination for a limited time from the device page.
+- **Disguised tracking detection:** if a site's own address redirects (CNAME) to a tracking service, it is blocked.
+- **Bypass protection:** browsers' own encrypted DNS and iCloud Private Relay are switched off, and known encrypted DNS services are blocked.
+- **No location hints:** Vahti does not forward your network's subnet (EDNS Client Subnet), and names inside your home network never go to the internet.
 
-Mitä Vahti ei tee: se ei näe salatun liikenteen sisältöä eikä avaa salausta. Estot tehdään sen perusteella, *mihin* laite ottaa yhteyttä. Lisätietoja: [docs/turvallisuusmalli.md](docs/turvallisuusmalli.md).
+What Vahti does not do: it does not see the content of encrypted traffic or break encryption. Blocking is based on *where* a device connects. More: [docs/security-model.md](docs/security-model.md).
 
-## Laitteisto
+## Hardware
 
-Vahti on kevyt: ohjelma vie noin 8 Mt ja käyttää tyypillisesti alle 100 Mt muistia. Lähes mikä tahansa jatkuvasti päällä oleva Linux-kone käy.
+Vahti is light: the program is about 8 MB and typically uses less than 100 MB of memory. Almost any always-on Linux computer will do.
 
-### Vähimmäisvaatimukset
+### Minimum requirements
 
-| | Vaatimus |
+| | Requirement |
 |---|---|
-| Prosessori | 64-bittinen ARM (arm64), 32-bittinen ARMv7 tai x86-64 (amd64) |
-| Muisti | 512 Mt, suositus 1 Gt tai enemmän |
-| Tallennustila | 1 Gt vapaata. Muistikortti riittää, SSD on kestävämpi. |
-| Verkko | Verkkokaapeli reitittimeen. Wifi toimii, mutta on epävarmempi, ja silloin koko kodin netti riippuu wifin toimivuudesta. |
-| Käyttöjärjestelmä | Linux ja systemd: Raspberry Pi OS (Bookworm tai uudempi), Debian 12+ tai Ubuntu 22.04+ |
-| Käyttö | Päällä ympäri vuorokauden. Kun Vahti on kodin nimipalvelin, netti ei toimi ilman sitä. |
+| Processor | 64-bit ARM (arm64), 32-bit ARMv7 or x86-64 (amd64) |
+| Memory | 512 MB, 1 GB or more recommended |
+| Storage | 1 GB free. A memory card is enough; an SSD lasts longer. |
+| Network | Ethernet cable to the router. Wi-Fi works but is less reliable, and the whole home's internet then depends on it. |
+| Operating system | Linux with systemd: Raspberry Pi OS (Bookworm or newer), Debian 12+ or Ubuntu 22.04+ |
+| Uptime | On around the clock. When Vahti is your home's DNS server, the internet does not work without it. |
 
-Palveluna, joka suojaa koko kotiverkon, Vahti toimii Linuxilla. Windowsilla on [kokeellinen tila](docs/windows.md), joka suojaa vain sen yhden tietokoneen, jolla Vahti on käynnissä. Lisäksi esittelytila (`vahti demo`) toimii kaikilla käyttöjärjestelmillä.
+As a service that protects the whole home network, Vahti runs on Linux. On Windows there is an [experimental mode](docs/windows.md) that protects only the computer Vahti runs on. Demo mode (`vahti demo`) works on every operating system.
 
-### Sopivat laitteet
+### Suitable devices
 
-| Laite | Sopii | Huomioita |
+| Device | Fit | Notes |
 |---|---|---|
-| **Raspberry Pi 4 tai 5** | Erinomaisesti | Hiljainen ja vähävirtainen (noin 3–7 W). Suositeltu vaihtoehto. |
-| Raspberry Pi 3B+ | Hyvin | Riittää tavalliseen kotiin. Asenna 64-bittinen käyttöjärjestelmä. |
-| **Vanha kannettava** | Hyvin | Ilmainen, jos sellainen on jo. Akku toimii varavirtalähteenä sähkökatkossa. Ks. [docs/vanha-kannettava.md](docs/vanha-kannettava.md). |
-| Minitietokone (esim. Intel N100) | Erinomaisesti | Hyvä valinta tulevaan reititintilaan, varsinkin malli, jossa on kaksi verkkoporttia. |
-| Vanha pöytäkone | Toimii | Kuluttaa enemmän sähköä (usein 30–60 W), mikä näkyy ympärivuotisessa käytössä. |
-| Raspberry Pi Zero 2 W | Ei suositella | Vain wifi, ei verkkoporttia. |
+| **Raspberry Pi 4 or 5** | Excellent | Silent and low-power (about 3–7 W). The recommended choice. |
+| Raspberry Pi 3B+ | Good | Enough for a normal home. Install a 64-bit operating system. |
+| **Old laptop** | Good | Free if you already have one. The battery acts as a backup power supply during outages. See [docs/old-laptop.md](docs/old-laptop.md). |
+| Mini PC (e.g. Intel N100) | Excellent | A good choice for the future router mode, especially a model with two network ports. |
+| Old desktop | Works | Uses more power (often 30–60 W), which adds up when it runs all year. |
+| Raspberry Pi Zero 2 W | Not recommended | Wi-Fi only, no network port. |
 
-### Kytkentä
+### Wiring
 
-Tässä versiossa Vahti toimii kotiverkon nimipalvelimena reitittimen *rinnalla*:
+In this version Vahti runs as your home's DNS server *alongside* the router:
 
 ```
-Internet ── modeemi ── reititin ──┬── puhelimet, TV, tietokoneet
-                                  │      (kysyvät nimet Vahdilta)
-                                  └── Vahti (kaapelilla)
+Internet ── modem ── router ──┬── phones, TV, computers
+                              │      (ask Vahti for names)
+                              └── Vahti (wired)
 ```
 
-Laitteen tarvitsee siis vain yhden verkkoyhteyden. Reititin kertoo laitteille, että nimipalvelin on Vahti.
+The device needs only one network connection. The router tells your devices that Vahti is the DNS server.
 
-Myöhemmin tuleva reititintila sijoittaa Vahdin modeemin ja kotiverkon *väliin*, jolloin se näkee ja hallitsee kaiken liikenteen. Siihen tarvitaan **kaksi verkkoporttia**: koneen oma portti ja esimerkiksi USB-verkkosovitin. Raspberry Pi 5:llä ja vanhalla kannettavalla tämä onnistuu USB-sovittimella, ja kahden portin minitietokone on siihen valmiiksi sopiva.
+A future router mode will place Vahti *between* the modem and your home network, so it can see and control all traffic. That needs **two network ports**: the computer's own port and, for example, a USB network adapter. A Raspberry Pi 5 or an old laptop can do this with a USB adapter, and a two-port mini PC is ready for it out of the box.
 
-## Kokeile omalla koneella
+## Try it on your computer
 
-Esittelytilassa liikenne on simuloitua, mutta kaikki kulkee oikean suodatusmoottorin läpi. Internetiin ei oteta yhteyttä.
+In demo mode the traffic is simulated, but everything runs through the real filtering engine. Nothing is sent to the internet.
 
 ```sh
 go build -o vahti ./cmd/vahti
 ./vahti demo
 ```
 
-Avaa http://127.0.0.1:8080 ja syötä päätteeseen tulostunut käyttöönottokoodi. Esittelytilan nimipalvelinta voi kokeilla myös suoraan: `dig @127.0.0.1 -p 5353 doubleclick.net`.
+Open http://127.0.0.1:8080 and enter the setup code printed in the terminal. You can also query the demo DNS server directly: `dig @127.0.0.1 -p 5353 doubleclick.net`.
 
-## Kokeile Windowsilla omaa liikennettäsi
+## See your own traffic on Windows
 
-Kokeellinen Windows-tila suodattaa vain sen tietokoneen liikenteen, jolla Vahti on käynnissä. Toisin kuin esittelytilassa, näet oman koneesi oikean liikenteen: esimerkiksi Windowsin oman telemetrian sekä sivujen mainos- ja analytiikkapalvelut. Muiden kodin laitteiden suojaamiseen tarvitaan Linux-laite (ks. [Laitteisto](#laitteisto)).
+The experimental Windows mode filters only the computer Vahti runs on. Unlike demo mode, you see your computer's real traffic: for example Windows' own telemetry and the advertising and analytics services on websites. Protecting the other devices in your home needs a Linux device (see [Hardware](#hardware)).
 
-1. Lataa [julkaisusivulta](https://github.com/EliasNiskanen/vahti/releases) tiedosto `vahti_<versio>_windows_amd64.zip` ja pura se esimerkiksi kansioon `C:\Vahti`.
-2. Avaa PowerShell kansiossa (Shift + hiiren oikea painike kansion tyhjässä kohdassa → *Avaa PowerShell-ikkuna tässä*) ja käynnistä Vahti:
+1. Download `vahti_<version>_windows_amd64.zip` from the [releases page](https://github.com/EliasNiskanen/vahti/releases) and extract it, for example to `C:\Vahti`.
+2. Open PowerShell in the folder (Shift + right-click on an empty spot in the folder → *Open PowerShell window here*) and start Vahti:
    ```powershell
-   powershell -ExecutionPolicy Bypass -File .\kaynnista-vahti.ps1
+   powershell -ExecutionPolicy Bypass -File .\start-vahti.ps1
    ```
-   Vahti avautuu omaan ikkunaansa, ja Windows kysyy lupaa DNS-asetusten muuttamiseen. Hyväksy.
-3. Avaa selaimessa http://127.0.0.1:8080, syötä Vahdin ikkunaan tulostunut käyttöönottokoodi ja aseta salasana.
-4. Lataa estolistat: `.\vahti.exe update-lists -local`
-5. Kytke Chromen tai Edgen asetuksista *Käytä suojattua DNS:ää* pois, muuten selain ohittaa Vahdin.
+   Vahti opens in its own window, and Windows asks for permission to change the DNS settings. Accept.
+3. Open http://127.0.0.1:8080 in your browser, enter the setup code shown in the Vahti window and set a password.
+4. Download the blocklists: `.\vahti.exe update-lists -local`
+5. In Chrome or Edge, turn off *Use secure DNS*, otherwise the browser bypasses Vahti.
 
-**Lopetus:** sulje Vahdin ikkuna. **DNS-asetukset palautetaan automaattisesti**, myös jos Vahti kaatuu. Jos kone sammuu kesken, asetukset palautetaan seuraavassa käynnistyksessä.
+**To stop:** close the Vahti window. **DNS settings are restored automatically**, also if Vahti crashes. If the computer shuts down in the middle, the settings are restored at the next startup.
 
-**Tarkistus:** näet milloin tahansa, ovatko asetukset normaalit, komennolla
+**To check** at any time whether your settings are normal:
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\tarkista-dns.ps1
+powershell -ExecutionPolicy Bypass -File .\check-dns.ps1
 ```
 
-Lisätietoja, vianetsintä ja palautuksen toimintaperiaate: [docs/windows.md](docs/windows.md).
+More details, troubleshooting and how the restore works: [docs/windows.md](docs/windows.md).
 
-## Asennus
+## Installation
 
-Ohje on kirjoitettu Raspberry Pi:lle, mutta se toimii samoin kaikilla Linux-koneilla. Vanhaa kannettavaa käyttäessäsi tee ensin [kannettavan valmistelut](docs/vanha-kannettava.md). Kytke laite reitittimeen verkkokaapelilla.
+These steps are written for a Raspberry Pi, but they work the same on any Linux computer. If you use an old laptop, do the [laptop preparation](docs/old-laptop.md) first. Connect the device to your router with a network cable.
 
-1. Lataa [julkaisusivulta](https://github.com/EliasNiskanen/vahti/releases) laitteellesi sopiva paketti ja tiedosto `SHA256SUMS`:
-   - Raspberry Pi 3/4/5 (64-bittinen käyttöjärjestelmä): `linux_arm64`
-   - Raspberry Pi, 32-bittinen käyttöjärjestelmä: `linux_armv7`
-   - Kannettava, minitietokone tai pöytäkone: `linux_amd64`
-2. Tarkista, että lataus on aito:
+1. Download the package for your device and the `SHA256SUMS` file from the [releases page](https://github.com/EliasNiskanen/vahti/releases):
+   - Raspberry Pi 3/4/5 (64-bit operating system): `linux_arm64`
+   - Raspberry Pi, 32-bit operating system: `linux_armv7`
+   - Laptop, mini PC or desktop: `linux_amd64`
+2. Check that the download is genuine:
    ```sh
    sha256sum --check --ignore-missing SHA256SUMS
    gh attestation verify vahti_*_linux_*.tar.gz --repo EliasNiskanen/vahti
    ```
-   Jälkimmäinen todistaa, että paketti on rakennettu GitHubissa tästä lähdekoodista.
-3. Pura ja asenna:
+   The second command proves the package was built on GitHub from this source code.
+3. Extract and install:
    ```sh
    tar xzf vahti_*_linux_*.tar.gz
    cd vahti_*_linux_*/
    sudo ./install.sh
    ```
-4. Avaa asennuksen lopussa näkyvä osoite selaimessa ja syötä käyttöönottokoodi. Selain varoittaa itse allekirjoitetusta varmenteesta. Varmista, että sormenjälki on sama kuin asennusohjelman tulostama, ja hyväksy se.
-5. Anna reitittimen asetuksista Vahti-laitteelle kiinteä IP-osoite.
-6. Aseta reitittimen DHCP-asetuksissa **DNS-palvelimeksi Vahti-laitteen osoite**. Laita vain tämä yksi osoite, sillä varapalvelin ohittaisi Vahdin.
-7. Kytke laitteiden wifi hetkeksi pois ja takaisin, jotta ne saavat uuden asetuksen.
+4. Open the address shown at the end of the installation and enter the setup code. The browser warns about a self-signed certificate. Check that the fingerprint matches the one the installer printed, then accept it.
+5. In your router settings, give the Vahti device a fixed IP address.
+6. In the router's DHCP settings, **set the DNS server to the Vahti device's address**. Use only this one address: a secondary server would bypass Vahti.
+7. Turn Wi-Fi off and on again on your devices so they pick up the new setting.
 
-### Hyvä tietää
+### Good to know
 
-- **IPv6:** Jos reititin jakaa IPv6-osoitteita, se voi mainostaa laitteille omaa nimipalvelintaan IPv6:n kautta. Kytke reitittimestä IPv6-DNS-mainonta pois tai aseta Vahdin IPv6-osoite.
-- **Paikalliset laitenimet:** Jos haluat Vahdin näyttävän reitittimen tuntemat laitenimet, aseta tiedostossa `/etc/vahti/config.json` kohtaan `localResolver` reitittimen osoite, esim. `"192.168.1.1:53"`.
-- **Jos Vahti pysähtyy, netti pysähtyy.** Tämä on tarkoituksellista: suodatusta ei ohiteta huomaamatta. systemd käynnistää Vahdin automaattisesti uudelleen, jos se kaatuu tai nimipalvelu lakkaa vastaamasta 30 sekunniksi. Hätätilanteessa palauta reitittimen DNS-asetus.
-- **Unohtunut salasana:** `sudo systemctl stop vahti && sudo vahti reset-admin && sudo systemctl start vahti`
-- **Estolistat:** `sudo systemctl start vahti-update-lists` lataa listat heti. Asennusohjelma voi ottaa viikoittaisen päivityksen käyttöön.
+- **IPv6:** If your router hands out IPv6 addresses, it may advertise its own DNS server over IPv6. Turn off IPv6 DNS advertisement in the router or set Vahti's IPv6 address.
+- **Local device names:** To show the device names your router knows, set `localResolver` in `/etc/vahti/config.json` to the router's address, e.g. `"192.168.1.1:53"`.
+- **If Vahti stops, the internet stops.** This is intentional: filtering is never bypassed silently. systemd restarts Vahti automatically if it crashes or DNS stops answering for 30 seconds. In an emergency, restore the router's DNS setting.
+- **Forgotten password:** `sudo systemctl stop vahti && sudo vahti reset-admin && sudo systemctl start vahti`
+- **Blocklists:** `sudo systemctl start vahti-update-lists` downloads the lists now. The installer can turn on weekly updates.
 
-## Muiden ihmisten liikenteen seuraaminen
+## Monitoring other people's traffic
 
-Vahti näkee, mihin palveluihin kodin laitteet ottavat yhteyttä. Kun laitteita käyttävät myös muut, kerro heille Vahdista: mitä se näkee, mitä se estää ja kuka pääsee hallintasivulle. Vahdin loki on vain laitteen muistissa, eikä sitä lähetetä minnekään.
+Vahti sees which services the devices in your home connect to. If other people use those devices, tell them about Vahti: what it sees, what it blocks and who can open the web interface. Vahti's log is kept only in the device's memory and is never sent anywhere.
 
-Omassa kodissa Vahti on käyttäjän oma työkalu. Työpaikoilla, kimppa- ja soluasunnoissa, vuokralaisten verkoissa ja muissa jaetuissa verkoissa viestinnän luottamuksellisuutta koskevat säännöt ovat tiukemmat. Selvitä niissä etukäteen, saatko seurata muiden liikennettä ja miten siitä pitää ilmoittaa. Tämä ei ole oikeudellista neuvontaa.
+In your own home Vahti is your own tool. At workplaces, in shared flats, on tenants' networks and on other shared networks, the rules on the confidentiality of communications are stricter. Find out in advance whether you may monitor other people's traffic and how you must tell them about it. This is not legal advice.
 
-## DNS-asetusten muuttaminen ja palauttaminen
+## Changing and restoring DNS settings
 
-Vahti toimii vain, jos laitteet kysyvät nimet siltä. Siksi käyttöönotto muuttaa joko reitittimen (koko koti) tai yhden tietokoneen (Windows-tila) DNS-asetuksia. Tämä tekee Vahdista välttämättömän osan verkkoa.
+Vahti only works if devices ask it for names. That is why setting it up changes the DNS settings of either your router (the whole home) or one computer (Windows mode). This makes Vahti an essential part of your network.
 
-**Ennen muutosta**
-- **Kirjoita alkuperäiset asetukset ylös.** Ota reitittimen DHCP- tai DNS-asetussivusta kuvakaappaus ennen kuin muutat mitään. Useimmiten DNS on asetettu automaattiseksi, jolloin reititin käyttää operaattorin nimipalvelimia.
-- **Tarkista, että Vahti vastaa.** Avaa hallintasivu ja varmista, että liikennettä näkyy ennen kuin muutat koko kodin asetukset.
-- **Kerro kotiväelle.** Jos netti lakkaa toimimasta, muiden on hyvä tietää, mistä se voi johtua ja kenelle soittaa.
-- **Varmista, että pääset reitittimen hallintaan ilman nimipalvelua.** Reitittimen osoite on yleensä IP-osoite, kuten `192.168.1.1`, joka toimii myös silloin, kun nimipalvelu ei toimi. Pidä osoite ja reitittimen salasana tallessa.
+**Before the change**
+- **Write down the original settings.** Take a screenshot of the router's DHCP or DNS settings page before you change anything. Usually DNS is automatic, which means the router uses your internet provider's DNS servers.
+- **Check that Vahti answers.** Open the web interface and make sure traffic appears before you change the settings for the whole home.
+- **Tell the people you live with.** If the internet stops working, they should know what might cause it and whom to call.
+- **Make sure you can reach the router's settings without DNS.** The router's address is usually an IP address such as `192.168.1.1`, which works even when DNS does not. Keep the address and the router password at hand.
 
-**Älä lisää varapalvelinta.** Jos annat reitittimelle Vahdin rinnalle toisen DNS-palvelimen, laitteet käyttävät sitä aina välillä, ja seuranta pääsee Vahdin ohi.
+**Do not add a secondary server.** If you give the router a second DNS server next to Vahti, devices will use it from time to time and tracking gets past Vahti.
 
-**Jos netti lakkaa toimimasta**
-1. **Tarkista Vahti.** Linuxissa: `systemctl status vahti`. Windowsissa: onko `vahti.exe local` -ikkuna auki?
-2. **Palauta asetukset, jos Vahtia ei saa heti toimimaan:**
-   - **Koko koti (reititin):** avaa reitittimen hallinta IP-osoitteella (esim. http://192.168.1.1), mene DHCP- tai LAN-asetuksiin ja palauta DNS-palvelimeksi *automaattinen* tai ylös kirjoittamasi alkuperäiset osoitteet. Kytke laitteiden wifi hetkeksi pois ja takaisin, jotta ne saavat uuden asetuksen.
-   - **Windows-tila:** asetukset palautuvat yleensä itsestään, kun Vahti suljetaan. Tarkista tila komennolla `tarkista-dns.ps1`. Jos ne eivät ole palautuneet, aja järjestelmänvalvojana `powershell -ExecutionPolicy Bypass -File .\palauta-dns.ps1`. Jos skriptiä ei ole käsillä: *Asetukset → Verkko ja Internet → Wi-Fi tai Ethernet → yhteyden ominaisuudet → DNS-palvelimen määritys → Muokkaa → Automaattinen (DHCP)*.
+**If the internet stops working**
+1. **Check Vahti.** On Linux: `systemctl status vahti`. On Windows: is the `vahti.exe local` window open?
+2. **Restore the settings if you cannot get Vahti working right away:**
+   - **Whole home (router):** open the router's settings by IP address (e.g. http://192.168.1.1), go to the DHCP or LAN settings and set the DNS server back to *automatic* or to the original addresses you wrote down. Turn Wi-Fi off and on again on your devices so they pick up the setting.
+   - **Windows mode:** the settings are normally restored automatically when Vahti is closed. Check with `check-dns.ps1`. If they were not restored, run as administrator `powershell -ExecutionPolicy Bypass -File .\restore-dns.ps1`. Without the script: *Settings → Network & Internet → Wi-Fi or Ethernet → connection properties → DNS server assignment → Edit → Automatic (DHCP)*.
 
-**Vahdin poistaminen:** palauta DNS-asetukset aina *ennen* kuin poistat Vahdin tai sammutat laitteen pysyvästi. Poisto-ohjelma (`uninstall.sh`) muistuttaa tästä.
+**Removing Vahti:** always restore your DNS settings *before* you remove Vahti or shut the device down for good. The uninstaller (`uninstall.sh`) reminds you of this.
 
-## Asetukset
+## Configuration
 
-Asetukset ovat tiedostossa `/etc/vahti/config.json`. Tuntematon tai virheellinen asetus estää käynnistyksen ja kertoo virheen lokissa (`journalctl -u vahti`), jotta kirjoitusvirhe ei jää huomaamatta.
+The settings are in `/etc/vahti/config.json`. An unknown or invalid setting stops Vahti from starting and is reported in the log (`journalctl -u vahti`), so a typo never goes unnoticed.
 
-| Asetus | Merkitys |
+| Setting | Meaning |
 |---|---|
-| `dns.upstreams` | Nimipalvelimet sallituille kyselyille. Oletuksena Quad9 salattuna (DNS over TLS). Muoto: `tls://ip:853#nimi`. |
-| `dns.allowedClients` | Osoitteet, joista kyselyihin vastataan. Oletuksena vain kotiverkon yksityiset osoitteet. |
-| `dns.localResolver` | Reititin kotiverkon nimille (`.lan` ym.). Tyhjänä paikallisiin nimiin vastataan "ei löydy". |
-| `dns.rebindProtection` | Estää julkisia nimiä osoittamasta kotiverkkoon (DNS rebinding). |
-| `dns.rebindAllow` | Poikkeukset edelliseen, esim. `plex.direct`. |
-| `web.hostnames` | Nimet, joilla hallintasivun voi avata. Muut nimet torjutaan. |
-| `lists` | Ladattavat estolistat (vain https). |
-| `logEntries` | Montako viimeisintä kyselyä pidetään muistissa. Lokia ei kirjoiteta levylle. |
+| `dns.upstreams` | DNS servers for allowed queries. Quad9 over DNS over TLS by default. Format: `tls://ip:853#name`. |
+| `dns.allowedClients` | Addresses whose queries are answered. By default only private home network addresses. |
+| `dns.localResolver` | The router, for local names (`.lan` etc.). If empty, local names get a "not found" answer. |
+| `dns.rebindProtection` | Stops public names from pointing into your home network (DNS rebinding). |
+| `dns.rebindAllow` | Exceptions to the above, e.g. `plex.direct`. |
+| `web.hostnames` | Names the web interface can be opened with. Other names are rejected. |
+| `lists` | Blocklists to download (https only). |
+| `logEntries` | How many recent queries are kept in memory. The log is never written to disk. |
 
-## Kehittäminen
+## Development
 
 ```sh
-make test     # testit rinnakkaisuustarkistimella
-make check    # testit, go vet ja muotoilu
-make pi       # käännös Raspberry Pi:lle
+make test     # tests with the race detector
+make check    # tests, go vet and formatting
+make pi       # build for Raspberry Pi
 ```
 
-Rakenne:
+Layout:
 
-| Kansio | Sisältö |
+| Folder | Contents |
 |---|---|
-| `cmd/vahti` | Ohjelman käynnistys ja komennot |
-| `internal/dnsserver` | Suodattava nimipalvelin: välimuisti, salattu välitys, CNAME- ja rebinding-tarkistukset |
-| `internal/engine` | Päätöslogiikka: laitteet, säännöt, jono, loki |
-| `internal/intel` | Seurantapalveluiden tunnistus ja omistajatiedot |
-| `internal/web` | Hallintasivu ja rajapinta: kirjautuminen, istunnot, CSRF-suojaus |
-| `deploy` | Asennusohjelma ja eristetyt systemd-palvelut |
-| `deploy/windows` | Windows-tilan PowerShell-skriptit |
-| `docs` | Turvallisuusmalli sekä Windows-, kannettava- ja julkaisuohjeet |
+| `cmd/vahti` | Program start-up and commands |
+| `internal/dnsserver` | The filtering DNS server: cache, encrypted forwarding, CNAME and rebinding checks |
+| `internal/engine` | Decision logic: devices, rules, queue, log |
+| `internal/intel` | Tracker recognition and ownership data |
+| `internal/web` | Web interface and API: sign-in, sessions, CSRF protection |
+| `deploy` | Installer and sandboxed systemd services |
+| `deploy/windows` | PowerShell scripts for Windows mode |
+| `docs` | Security model and guides for Windows, old laptops and publishing |
 
-Riippuvuuksia on tarkoituksella vähän: [miekg/dns](https://github.com/miekg/dns) sekä Go-projektin omat `golang.org/x/crypto` ja `golang.org/x/net`.
+Dependencies are deliberately few: [miekg/dns](https://github.com/miekg/dns) and the Go project's own `golang.org/x/crypto` and `golang.org/x/net`.
 
-## Muutokset
+## Changes
 
-Versiohistoria on tiedostossa [CHANGELOG.md](CHANGELOG.md).
+The version history is in [CHANGELOG.md](CHANGELOG.md).
 
-## Tietoturva
+## Security
 
-Löysitkö haavoittuvuuden? Älä avaa julkista issueta, vaan katso [SECURITY.md](SECURITY.md).
+Found a vulnerability? Do not open a public issue; see [SECURITY.md](SECURITY.md).
 
-## Lisenssi
+## License
 
-Apache License 2.0. Ohjelma toimitetaan sellaisenaan ilman takuuta (ks. [LICENSE](LICENSE)).
+Apache License 2.0. The software is provided as is, without warranty (see [LICENSE](LICENSE)).
 
-Estolistoilla on omat lisenssinsä: StevenBlack/hosts (MIT) ja URLhaus (CC0). Jos lisäät listoja, tarkista niiden käyttöehdot. Osa seurantatietokannoista sallii vain ei-kaupallisen käytön.
+The blocklists have their own licenses: StevenBlack/hosts (MIT) and URLhaus (CC0). If you add lists, check their terms. Some tracker databases allow only non-commercial use.

@@ -94,7 +94,7 @@ func TestOnceAndTimedRules(t *testing.T) {
 	if _, err := e.AddRule(dev, "cloud.example", Allow, 0, true, "queue"); err != nil {
 		t.Fatal(err)
 	}
-	if v := decide(e, dev, "cloud.example"); v.Action != Allow || v.Reason != "Kertalupa" {
+	if v := decide(e, dev, "cloud.example"); v.Action != Allow || v.Reason != "One-time permission" {
 		t.Fatalf("first use of once rule: %+v", v)
 	}
 	if v := decide(e, dev, "cloud.example"); v.Action != Block || !v.Queued {
@@ -155,7 +155,7 @@ func TestLearningLocksAfterwards(t *testing.T) {
 		t.Fatal(v)
 	}
 	c.t = c.t.Add(3 * time.Hour)
-	if v := decide(e, dev, "eu.api.vendor.example"); v.Action != Allow || v.Reason != "Opittu kohde" {
+	if v := decide(e, dev, "eu.api.vendor.example"); v.Action != Allow || v.Reason != "Learned destination" {
 		t.Fatalf("learned site should stay allowed: %+v", v)
 	}
 	if v := decide(e, dev, "new.other.example"); v.Action != Block || !v.Queued {

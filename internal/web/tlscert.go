@@ -42,7 +42,7 @@ func EnsureCert(dir string, hostnames []string) (tls.Certificate, string, error)
 	serial, _ := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 120))
 	tpl := &x509.Certificate{
 		SerialNumber:          serial,
-		Subject:               pkix.Name{CommonName: hostnames[0], Organization: []string{"Vahti (paikallinen)"}},
+		Subject:               pkix.Name{CommonName: hostnames[0], Organization: []string{"Vahti (local)"}},
 		NotBefore:             time.Now().Add(-time.Hour),
 		NotAfter:              time.Now().Add(825 * 24 * time.Hour),
 		KeyUsage:              x509.KeyUsageDigitalSignature,

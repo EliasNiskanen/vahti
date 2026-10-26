@@ -123,7 +123,7 @@ func (db *DB) LoadListFile(path, name, category string) ListInfo {
 	info := ListInfo{Name: name, Category: category}
 	f, err := os.Open(path)
 	if err != nil {
-		info.Error = "listaa ei ole ladattu"
+		info.Error = "list not downloaded"
 		db.addInfo(info)
 		return info
 	}
@@ -295,7 +295,7 @@ func ParseList(r io.Reader, max int) ([]string, error) {
 		seen[d] = struct{}{}
 		out = append(out, d)
 		if len(out) > max {
-			return nil, fmt.Errorf("lista on liian suuri (yli %d riviä)", max)
+			return nil, fmt.Errorf("list is too large (over %d lines)", max)
 		}
 	}
 	if err := sc.Err(); err != nil {

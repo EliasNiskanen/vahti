@@ -115,7 +115,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/pause", s.auth(s.apiPause))
 	mux.HandleFunc("GET /api/log", s.auth(s.apiLog))
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
-		writeErr(w, http.StatusNotFound, "Tuntematon rajapinta.")
+		writeErr(w, http.StatusNotFound, "Unknown API endpoint.")
 	})
 	return s.guard(mux)
 }
@@ -145,17 +145,17 @@ func (s *Server) guard(next http.Handler) http.Handler {
 
 		ap, err := netip.ParseAddrPort(r.RemoteAddr)
 		if err != nil || !s.allowed.Contains(ap.Addr()) {
-			http.Error(w, "Vahtia voi käyttää vain kotiverkosta.", http.StatusForbidden)
+			http.Error(w, "Vahti can only be used from the home network.", http.StatusForbidden)
 			return
 		}
 		if !s.hostAllowed(r.Host) {
 			// Blocks DNS rebinding: a malicious site's name pointing at Vahti.
-			http.Error(w, "Tuntematon osoite. Avaa Vahti osoitteella https://vahti.lan tai laitteen IP-osoitteella.", http.StatusMisdirectedRequest)
+			http.Error(w, "Unknown address. Open Vahti at https://vahti.lan or with the device's IP address.", http.StatusMisdirectedRequest)
 			return
 		}
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			if !s.sameOrigin(r) {
-				writeErr(w, http.StatusForbidden, "Pyyntö tuli toiselta sivustolta, joten se hylättiin.")
+				writeErr(w, http.StatusForbidden, "The request came from another site, so it was rejected.")
 				return
 			}
 		}
@@ -202,18 +202,18 @@ func (s *Server) auth(next authedFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie(s.cookieName())
 		if err != nil {
-			writeErr(w, http.StatusUnauthorized, "Kirjaudu sisään.")
+			writeErr(w, http.StatusUnauthorized, "Sign in.")
 			return
 		}
 		ss, ok := s.sess.get(c.Value)
 		if !ok {
-			writeErr(w, http.StatusUnauthorized, "Istunto on vanhentunut. Kirjaudu uudelleen.")
+			writeErr(w, http.StatusUnauthorized, "Your session has expired. Sign in again.")
 			return
 		}
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			tok := r.Header.Get("X-CSRF-Token")
 			if subtle.ConstantTimeCompare([]byte(tok), []byte(ss.csrf)) != 1 {
-				writeErr(w, http.StatusForbidden, "Suojaustunniste puuttuu. Lataa sivu uudelleen.")
+				writeErr(w, http.StatusForbidden, "Security token missing. Reload the page.")
 				return
 			}
 		}
@@ -262,18 +262,18 @@ func (s *Server) serveStatic(w http.ResponseWriter, r *http.Request) {
 
 func readJSON(w http.ResponseWriter, r *http.Request, v any) bool {
 	if ct := r.Header.Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
-		writeErr(w, http.StatusUnsupportedMediaType, "Pyynnön pitää olla JSON-muodossa.")
+		writeErr(w, http.StatusUnsupportedMediaType, "The request must be JSON.")
 		return false
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, 64*1024)
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(v); err != nil {
-		writeErr(w, http.StatusBadRequest, "Pyyntö oli virheellinen.")
+		writeErr(w, http.StatusBadRequest, "The request was invalid.")
 		return false
 	}
 	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
-		writeErr(w, http.StatusBadRequest, "Pyyntö oli virheellinen.")
+		writeErr(w, http.StatusBadRequest, "The request was invalid.")
 		return false
 	}
 	return true
@@ -295,11 +295,11 @@ func writeErr(w http.ResponseWriter, status int, msg string) {
 func engineErr(w http.ResponseWriter, err error) {
 	switch {
 	case errors.Is(err, engine.ErrNotFound):
-		writeErr(w, http.StatusNotFound, "Kohdetta ei löytynyt. Se on ehkä jo poistettu.")
+		writeErr(w, http.StatusNotFound, "Not found. It may already have been removed.")
 	case errors.Is(err, engine.ErrInvalid):
-		writeErr(w, http.StatusBadRequest, "Tarkista syötetyt tiedot.")
+		writeErr(w, http.StatusBadRequest, "Check the values you entered.")
 	default:
-		writeErr(w, http.StatusInternalServerError, "Jokin meni vikaan. Yritä uudelleen.")
+		writeErr(w, http.StatusInternalServerError, "Something went wrong. Try again.")
 	}
 }
 

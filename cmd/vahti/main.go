@@ -39,14 +39,14 @@ var version = "dev"
 const defaultConfig = "/etc/vahti/config.json"
 
 func usage() {
-	fmt.Fprintf(os.Stderr, `Vahti %s — kotiverkon yksityisyyssuodatin
+	fmt.Fprintf(os.Stderr, `Vahti %s - privacy filter for your home network
 
-Käyttö:
-  vahti [run] [-config %s]   käynnistä palvelu
-  vahti demo [-dir ./vahti-demo]          esittelytila omalle koneelle (http://127.0.0.1:8080)
-  vahti local [-router 192.168.1.1]       kokeellinen tila: suodattaa vain tämän koneen liikenteen
-  vahti update-lists [-config ...|-local] lataa estolistat (ainoa toiminto, joka hakee dataa verkosta)
-  vahti reset-admin [-config ...]         unohda salasana ja luo uusi käyttöönottokoodi
+Usage:
+  vahti [run] [-config %s]   run the service
+  vahti demo [-dir ./vahti-demo]          demo mode on your own computer (http://127.0.0.1:8080)
+  vahti local [-router 192.168.1.1]       experimental: filter only this computer's traffic
+  vahti update-lists [-config ...|-local] download blocklists (the only command that fetches data from the internet)
+  vahti reset-admin [-config ...]         forget the password and create a new setup code
   vahti version
 `, version, defaultConfig)
 }
@@ -85,7 +85,7 @@ func main() {
 }
 
 func loadConfig(fs *flag.FlagSet, args []string) (config.Config, error) {
-	path := fs.String("config", defaultConfig, "asetustiedosto")
+	path := fs.String("config", defaultConfig, "configuration file")
 	if err := fs.Parse(args); err != nil {
 		return config.Config{}, err
 	}
@@ -154,9 +154,9 @@ func cmdRun(args []string, mode runMode) error {
 	var cfg config.Config
 	var err error
 	if mode == modeLocal {
-		dir := fs.String("dir", localDataDir(), "datakansio")
-		webAddr := fs.String("web", "127.0.0.1:8080", "käyttöliittymän osoite (vain tämä kone)")
-		router := fs.String("router", "", "reitittimen IP-osoite kotiverkon laitenimiä varten, esim. 192.168.1.1")
+		dir := fs.String("dir", localDataDir(), "data directory")
+		webAddr := fs.String("web", "127.0.0.1:8080", "web interface address (this computer only)")
+		router := fs.String("router", "", "router IP address for local device names, e.g. 192.168.1.1")
 		if err := fs.Parse(args); err != nil {
 			return err
 		}
@@ -165,9 +165,9 @@ func cmdRun(args []string, mode runMode) error {
 			return err
 		}
 	} else if demoMode {
-		dir := fs.String("dir", "./vahti-demo", "esittelytilan datakansio")
-		webAddr := fs.String("web", "127.0.0.1:8080", "käyttöliittymän osoite")
-		dnsAddr := fs.String("dns", "127.0.0.1:5353", "nimipalvelimen osoite (esim. dig @127.0.0.1 -p 5353)")
+		dir := fs.String("dir", "./vahti-demo", "demo data directory")
+		webAddr := fs.String("web", "127.0.0.1:8080", "web interface address")
+		dnsAddr := fs.String("dns", "127.0.0.1:5353", "DNS address (e.g. dig @127.0.0.1 -p 5353)")
 		if err := fs.Parse(args); err != nil {
 			return err
 		}
@@ -223,7 +223,7 @@ func cmdRun(args []string, mode runMode) error {
 		}
 		slog.Info("VAHTI IS NOT SET UP YET. Open the web interface and enter this one-time setup code", "code", code, "file", setupPath)
 		if mode != modeService {
-			fmt.Fprintf(os.Stderr, "\n  Avaa http://%s ja syötä käyttöönottokoodi: %s\n\n", cfg.Web.Listen, code)
+			fmt.Fprintf(os.Stderr, "\n  Open http://%s and enter the setup code: %s\n\n", cfg.Web.Listen, code)
 		}
 	}
 	if err := saveState(eng, statePath, true); err != nil {
@@ -256,7 +256,7 @@ func cmdRun(args []string, mode runMode) error {
 		// IPv6 loopback may be disabled; IPv4 alone still works.
 		slog.Warn("could not listen on all addresses; trying IPv4 only", "err", err)
 		if err2 := dnsSrv.Start(cfg.DNS.Listen[:1]); err2 != nil {
-			return fmt.Errorf("%w\nPortti 53 on luultavasti toisen ohjelman käytössä (esim. Windowsin Internet-yhteyden jakaminen, Hyper-V tai toinen DNS-ohjelma). Tarkista PowerShellissä: Get-NetUDPEndpoint -LocalPort 53", err2)
+			return fmt.Errorf("%w\nport 53 is probably used by another program (e.g. Windows Internet Connection Sharing, Hyper-V or another DNS program); check in PowerShell: Get-NetUDPEndpoint -LocalPort 53", err2)
 		}
 	}
 	defer dnsSrv.Shutdown()
@@ -386,7 +386,7 @@ func cmdRun(args []string, mode runMode) error {
 	}
 	if mode == modeLocal {
 		nameThisComputer(eng)
-		fmt.Fprintf(os.Stderr, "\n  Vahti on käynnissä. Hallinta: http://%s\n  Lopetus: sulje tämä ikkuna tai paina Ctrl+C.\n  Jos käynnistit Vahdin skriptillä kaynnista-vahti.ps1, DNS-asetukset palautuvat automaattisesti.\n\n", cfg.Web.Listen)
+		fmt.Fprintf(os.Stderr, "\n  Vahti is running. Manage it at http://%s\n  To stop: close this window or press Ctrl+C.\n  If you started Vahti with start-vahti.ps1, DNS settings are restored automatically.\n\n", cfg.Web.Listen)
 	}
 	_ = sdnotify.Notify("READY=1")
 
@@ -411,10 +411,10 @@ func cmdRun(args []string, mode runMode) error {
 
 // nameThisComputer gives the loopback clients a friendly name in local mode.
 func nameThisComputer(eng *engine.Engine) {
-	name, kind := "Tämä tietokone", "computer"
+	name, kind := "This computer", "computer"
 	for _, ip := range []string{"127.0.0.1", "::1"} {
 		id := eng.Identify(netip.MustParseAddr(ip), "")
-		if d, ok := eng.Device(id); ok && strings.HasPrefix(d.Name, "Vahti-laite") {
+		if d, ok := eng.Device(id); ok && strings.HasPrefix(d.Name, "Vahti device") {
 			n := name
 			if ip == "::1" {
 				n = name + " (IPv6)"
@@ -461,8 +461,8 @@ func selfCheckAddr(listen string) string {
 
 func cmdUpdateLists(args []string) error {
 	fs := flag.NewFlagSet("update-lists", flag.ExitOnError)
-	local := fs.Bool("local", false, "päivitä paikallisen tilan (vahti local) listat")
-	path := fs.String("config", defaultConfig, "asetustiedosto")
+	local := fs.Bool("local", false, "update the lists for local mode (vahti local)")
+	path := fs.String("config", defaultConfig, "configuration file")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -494,9 +494,9 @@ func cmdUpdateLists(args []string) error {
 		slog.Info("list updated", "list", l.Name, "domains", n)
 	}
 	if *local {
-		fmt.Println("Valmis. Vahti ottaa listat käyttöön itsestään puolen minuutin kuluessa.")
+		fmt.Println("Done. Vahti picks up the new lists within 30 seconds.")
 	} else {
-		fmt.Println("Valmis. Ota listat käyttöön: sudo systemctl reload vahti")
+		fmt.Println("Done. Apply the lists with: sudo systemctl reload vahti")
 	}
 	if failed > 0 {
 		return fmt.Errorf("%d list(s) failed", failed)
@@ -547,7 +547,7 @@ func cmdResetAdmin(args []string) error {
 	}
 	lk, err := lock.Acquire(cfg.DataDir)
 	if errors.Is(err, lock.ErrBusy) {
-		fmt.Fprintln(os.Stderr, "Vahti on käynnissä. Pysäytä se ensin: sudo systemctl stop vahti")
+		fmt.Fprintln(os.Stderr, "Vahti is running. Stop it first: sudo systemctl stop vahti")
 		return err
 	}
 	if err != nil {
@@ -568,6 +568,6 @@ func cmdResetAdmin(args []string) error {
 		return err
 	}
 	lock.MatchOwner(cfg.DataDir, path, path+".bak", filepath.Join(cfg.DataDir, "setup-code"), filepath.Join(cfg.DataDir, ".lock"))
-	fmt.Printf("Salasana poistettu. Uusi käyttöönottokoodi: %s\nKäynnistä Vahti: sudo systemctl start vahti\n", code)
+	fmt.Printf("Password removed. New setup code: %s\nStart Vahti: sudo systemctl start vahti\n", code)
 	return nil
 }

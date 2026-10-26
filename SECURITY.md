@@ -1,38 +1,38 @@
-# Tietoturvakäytäntö
+# Security policy
 
-## Haavoittuvuuksista ilmoittaminen
+## Reporting a vulnerability
 
-Älä ilmoita haavoittuvuuksista julkisessa issuessa.
+Please do not report vulnerabilities in a public issue.
 
-Käytä GitHubin yksityistä ilmoituskanavaa: repositorion **Security**-välilehti → **Report a vulnerability**. Viesti näkyy vain ylläpitäjille.
+Use GitHub's private reporting channel: the repository's **Security** tab → **Report a vulnerability**. Only the maintainers can see the report.
 
-Kerro ilmoituksessa:
+In your report, please include:
 
-- mitä löysit ja mihin se vaikuttaa
-- miten sen voi toistaa (versio, asetukset, pyynnöt)
-- jos mahdollista, ehdotus korjaukseksi
+- what you found and what it affects
+- how to reproduce it (version, settings, requests)
+- a suggested fix, if you have one
 
-Vahti on harrastusprojekti, jota ylläpidetään vapaa-ajalla, joten tarkkoja aikoja en voi luvata. Pyrin seuraavaan:
+Vahti is a hobby project maintained in my free time, so I cannot promise exact response times. I aim to:
 
-- vastaus viikon kuluessa
-- vakavat ongelmat korjataan ennen muita töitä
-- korjauksen jälkeen julkaistaan tiedote (GitHub Security Advisory), ja ilmoittajaa kiitetään, jos hän niin haluaa
+- reply within a week
+- fix serious problems before any other work
+- publish an advisory (GitHub Security Advisory) after the fix and credit the reporter if they wish
 
-Pyydämme, ettet julkaise tietoja ennen korjausta etkä testaa muiden ihmisten laitteita.
+Please do not disclose details before a fix is available, and do not test other people's devices.
 
-## Tuetut versiot
+## Supported versions
 
-Tietoturvakorjaukset tehdään uusimpaan julkaisuun. Päivitä aina uusimpaan versioon.
+Security fixes go into the latest release. Always update to the latest version.
 
-## Mitä pidetään haavoittuvuutena
+## What counts as a vulnerability
 
-Esimerkiksi:
+For example:
 
-- hallintasivulle pääsy ilman salasanaa tai CSRF-suojauksen ohitus
-- Vahdin saaminen vastaamaan kyselyihin kotiverkon ulkopuolelta
-- estetyn kyselyn pääsy kotiverkon ulkopuolelle
-- tiedostojen lukeminen tai kirjoittaminen datakansion ulkopuolelle
-- palvelunesto, jonka yksittäinen kotiverkon laite voi aiheuttaa helposti
-- haitallisen koodin suorittaminen hallintasivulla (XSS)
+- access to the web interface without the password, or bypassing the CSRF protection
+- getting Vahti to answer DNS queries from outside the home network
+- a blocked query leaving the home network
+- reading or writing files outside the data directory
+- a denial of service that a single device on the home network can easily cause
+- running malicious code in the web interface (XSS)
 
-Uhkamalli ja tunnetut rajoitukset: [docs/turvallisuusmalli.md](docs/turvallisuusmalli.md).
+Threat model and known limitations: [docs/security-model.md](docs/security-model.md).

@@ -242,7 +242,7 @@ func (s *Server) Process(client netip.Addr, req *dns.Msg) *dns.Msg {
 	// Canary names make browsers and Apple devices stop bypassing Vahti.
 	if isCanary(name) && s.eng.CategoryAction(intel.Bypass) == engine.Block {
 		s.eng.Record(engine.LogEntry{Device: devID, Domain: name, QType: qtype, Category: intel.Bypass,
-			Action: engine.Block, Reason: "Selaimen omaa salattua DNS:ää ei sallita"})
+			Action: engine.Block, Reason: "Browser's own encrypted DNS is not allowed"})
 		return reply(req, dns.RcodeNameError)
 	}
 
@@ -256,7 +256,7 @@ func (s *Server) Process(client netip.Addr, req *dns.Msg) *dns.Msg {
 
 	resp, err := s.resolve(req, fqdn)
 	if err != nil {
-		le.Reason = "Nimipalvelin ei vastannut"
+		le.Reason = "Upstream resolver did not answer"
 		s.eng.Record(le)
 		return reply(req, dns.RcodeServerFailure)
 	}
@@ -275,7 +275,7 @@ func (s *Server) Process(client netip.Addr, req *dns.Msg) *dns.Msg {
 		tv := s.eng.DecideCNAME(devID, target, tm)
 		if tv.Action == engine.Block {
 			le.Action, le.Category, le.Via = engine.Block, tv.Category, target
-			le.Reason = "Naamioitu seuranta (CNAME)"
+			le.Reason = "Disguised tracking (CNAME)"
 			s.eng.Record(le)
 			return blocked(req, fqdn, q.Qtype)
 		}
@@ -295,7 +295,7 @@ func (s *Server) Process(client netip.Addr, req *dns.Msg) *dns.Msg {
 			}
 			if addr, ok := netip.AddrFromSlice(ip); ok && netutil.IsInternal(addr) {
 				le.Action = engine.Block
-				le.Reason = "Suojaus kotiverkkoon kohdistuvalta hyökkäykseltä (DNS rebinding)"
+				le.Reason = "Protection against attacks on the home network (DNS rebinding)"
 				s.eng.Record(le)
 				return reply(req, dns.RcodeNameError)
 			}

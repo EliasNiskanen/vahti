@@ -187,11 +187,11 @@ func TestLoginThrottle(t *testing.T) {
 }
 
 func TestPasswordHash(t *testing.T) {
-	enc, err := HashPassword("salasana-joka-on-pitka")
+	enc, err := HashPassword("a-password-that-is-long")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(enc, "argon2id$") || !VerifyPassword(enc, "salasana-joka-on-pitka") || VerifyPassword(enc, "väärä") {
+	if !strings.HasPrefix(enc, "argon2id$") || !VerifyPassword(enc, "a-password-that-is-long") || VerifyPassword(enc, "wrong") {
 		t.Fatal("hash/verify")
 	}
 	for _, bad := range []string{"", "argon2id$v=19$m=999999999,t=1,p=1$AA$AA", "plain"} {

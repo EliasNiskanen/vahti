@@ -1,11 +1,11 @@
 ﻿$ErrorActionPreference = 'Stop'
-# Simuloi Windowsin verkkosovittimet ja testaa DNS-asetusten ohjauksen ja palautuksen.
-# Aja:  pwsh -File deploy/windows/tests/VahtiDns.Tests.ps1
+# Simulates Windows network adapters and tests pointing DNS at Vahti and restoring it.
+# Run:  pwsh -File deploy/windows/tests/VahtiDns.Tests.ps1
 $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ('vahti-test-' + [guid]::NewGuid())
 $env:ProgramData = Join-Path $tmp 'pd'; $env:LOCALAPPDATA = Join-Path $tmp 'la'
 Remove-Item -Recurse -Force $env:ProgramData -ErrorAction SilentlyContinue
-# --- simuloitu Windows ---
-$global:dns = @{ 7 = @('192.168.1.1'); 9 = @('1.1.1.1','8.8.8.8') }   # 7 = DHCP (wifi), 9 = kiinteä (ethernet)
+# --- simulated Windows ---
+$global:dns = @{ 7 = @('192.168.1.1'); 9 = @('1.1.1.1','8.8.8.8') }   # 7 = DHCP (wifi), 9 = static (ethernet)
 $global:static = @{ 7 = ''; 9 = '1.1.1.1,8.8.8.8' }
 $global:vahti = $true; $global:tasks = @{}
 function global:Get-NetAdapter { param([switch]$IncludeHidden)
@@ -33,24 +33,31 @@ Import-Module (Join-Path $PSScriptRoot '../VahtiDns.psm1') -Force
 function Check($c,$m){ if(-not $c){ throw "FAIL: $m" } else { "ok: $m" } }
 
 $v6 = Set-VahtiDns
-Check (($global:dns[7] -join ',') -eq '127.0.0.1') 'wifi ohjattu Vahdille'
-Check (($global:dns[9] -join ',') -eq '127.0.0.1') 'ethernet ohjattu Vahdille'
-Check ($global:tasks.Count -eq 1) 'käynnistyspalautus ajastettu'
-Check (Test-Path (Join-Path $env:ProgramData 'Vahti/palauta-kaynnistyksessa.ps1')) 'palautusskripti suojattuun kansioon'
-Set-VahtiDns | Out-Null   # toinen ajo ei saa korvata alkuperäistä varmuuskopiota
+Check (($global:dns[7] -join ',') -eq '127.0.0.1') 'wifi points to Vahti'
+Check (($global:dns[9] -join ',') -eq '127.0.0.1') 'ethernet points to Vahti'
+Check ($global:tasks.Count -eq 1) 'restore at startup scheduled'
+Check (Test-Path (Join-Path $env:ProgramData 'Vahti/restore-at-boot.ps1')) 'restore script in protected folder'
+Set-VahtiDns | Out-Null   # a second run must not overwrite the original backup
 Restore-VahtiDns
-Check (($global:dns[7] -join ',') -eq '192.168.1.1' -and -not $global:static[7]) 'wifi takaisin automaattiseksi'
-Check (($global:dns[9] -join ',') -eq '1.1.1.1,8.8.8.8') 'ethernetin kiinteät osoitteet palautettu'
-Check ($global:tasks.Count -eq 0) 'ajastus poistettu palautuksen jälkeen'
-Check (-not (Test-Path (Join-Path $env:ProgramData 'Vahti/dns-varmuuskopio.json'))) 'varmuuskopio poistettu'
+Check (($global:dns[7] -join ',') -eq '192.168.1.1' -and -not $global:static[7]) 'wifi back to automatic'
+Check (($global:dns[9] -join ',') -eq '1.1.1.1,8.8.8.8') 'ethernet static servers restored'
+Check ($global:tasks.Count -eq 0) 'scheduled task removed after restore'
+Check (-not (Test-Path (Join-Path $env:ProgramData 'Vahti/dns-backup.json'))) 'backup removed'
 
-# Varmuuskopio kadonnut, mutta DNS osoittaa Vahtiin -> korjataan silti
+# Backup missing but DNS points to Vahti -> still fixed
 $global:dns[7] = @('127.0.0.1'); Restore-VahtiDns
-Check (($global:dns[7] -join ',') -eq '192.168.1.1') 'ilman varmuuskopiota Vahtiin osoittava sovitin korjataan'
-Check (($global:dns[9] -join ',') -eq '1.1.1.1,8.8.8.8') 'muihin sovittimiin ei kosketa'
+Check (($global:dns[7] -join ',') -eq '192.168.1.1') 'adapter pointing to Vahti is fixed without a backup'
+Check (($global:dns[9] -join ',') -eq '1.1.1.1,8.8.8.8') 'other adapters are untouched'
 
-# Vahti ei käynnissä -> ei muuteta mitään
+# Vahti not running -> nothing is changed
 $global:vahti = $false
-try { Set-VahtiDns; 'FAIL' } catch { Check ($_.Exception.Message -match 'ei vastaa') 'asetuksia ei muuteta, jos Vahti ei vastaa' }
-Check (($global:dns[7] -join ',') -eq '192.168.1.1') 'wifi koskematon'
+try { Set-VahtiDns; 'FAIL' } catch { Check ($_.Exception.Message -match 'not answering') 'settings unchanged if Vahti does not answer' }
+Check (($global:dns[7] -join ',') -eq '192.168.1.1') 'wifi untouched'
+
+# Backup from an earlier (Finnish) version is still restored
+$global:dns[7] = @('127.0.0.1')
+New-Item -ItemType Directory -Force (Join-Path $env:ProgramData 'Vahti') | Out-Null
+ConvertTo-Json -InputObject @([pscustomobject]@{Index=7;Guid='{G7}';Name='Wi-Fi';Static4='9.9.9.9';Static6=''}) | Set-Content (Join-Path $env:ProgramData 'Vahti/dns-varmuuskopio.json')
+Restore-VahtiDns
+Check (($global:dns[7] -join ',') -eq '9.9.9.9') 'legacy backup restored'
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue

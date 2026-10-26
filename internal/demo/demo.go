@@ -31,34 +31,34 @@ type dest struct {
 
 // The fictional companies below are marked as such in the intel database.
 var devices = []dev{
-	{"192.168.1.14", "02:00:00:00:00:14", "Olohuoneen TV", "tv", engine.Locked, []dest{
+	{"192.168.1.14", "02:00:00:00:00:14", "Living room TV", "tv", engine.Locked, []dest{
 		{"api-global.netflix.com", 5}, {"samsungacr.com", 3}, {"log-config.samsungacr.com", 2}, {"samsungads.com", 2},
 		{"doubleclick.net", 2}, {"fw.tv-vendor-cloud.example", 1}, {"beacon.channel-stats.example", 1}}},
-	{"192.168.1.21", "02:00:00:00:00:21", "Oma puhelin", "phone", engine.Open, []dest{
+	{"192.168.1.21", "02:00:00:00:00:21", "My phone", "phone", engine.Open, []dest{
 		{"g.whatsapp.net", 4}, {"app-measurement.com", 3}, {"graph.facebook.com", 2}, {"connect.facebook.net", 2},
-		{"firebaselogging-pa.googleapis.com", 2}, {"sdk.shopmetrics.example", 2}, {"mobile.verkkopankki.example", 2}, {"api.adjust.com", 1}, {"dns.google", 1}}},
-	{"192.168.1.33", "02:00:00:00:00:33", "Kannettava", "computer", engine.Open, []dest{
-		{"www.yle.fi", 3}, {"www.google-analytics.com", 3}, {"cdn.cart-tracker.example", 2}, {"metrics.kauppa.example", 2},
+		{"firebaselogging-pa.googleapis.com", 2}, {"sdk.shopmetrics.example", 2}, {"mobile.bank.example", 2}, {"api.adjust.com", 1}, {"dns.google", 1}}},
+	{"192.168.1.33", "02:00:00:00:00:33", "Laptop", "computer", engine.Open, []dest{
+		{"www.yle.fi", 3}, {"www.google-analytics.com", 3}, {"cdn.cart-tracker.example", 2}, {"metrics.shop.example", 2},
 		{"bat.bing.com", 1}, {"upd-cdn-sync.example", 1}, {"use-application-dns.net", 1}, {"vortex.data.microsoft.com", 1}}},
-	{"192.168.1.40", "02:00:00:00:00:40", "Robotti-imuri", "appliance", engine.Locked, []dest{
+	{"192.168.1.40", "02:00:00:00:00:40", "Robot vacuum", "appliance", engine.Locked, []dest{
 		{"api.robovac-cloud.example", 3}, {"map-upload.robovac-cloud.example", 2}, {"log.robovac-cloud.example", 2}}},
-	{"192.168.1.52", "02:00:00:00:00:52", "Ovikamera", "camera", engine.Locked, []dest{
+	{"192.168.1.52", "02:00:00:00:00:52", "Doorbell camera", "camera", engine.Locked, []dest{
 		{"stream.doorcam-cloud.example", 3}, {"events.doorcam-cloud.example", 2}, {"face-match.doorcam-cloud.example", 1}}},
-	{"192.168.1.61", "02:00:00:00:00:61", "Älykaiutin", "speaker", engine.Learning, []dest{
+	{"192.168.1.61", "02:00:00:00:00:61", "Smart speaker", "speaker", engine.Learning, []dest{
 		{"voice.speaker-cloud.example", 3}, {"metrics.speaker-cloud.example", 2}, {"device-metrics-us.amazon.com", 2}}},
 }
 
 // cname simulates first-party names that are really trackers (CNAME cloaking).
 var cname = map[string]string{
-	"metrics.kauppa.example": "kauppa.cart-tracker.example",
+	"metrics.shop.example": "shop.cart-tracker.example",
 }
 
 // SeedIntel adds the fictional demo companies to the intel database.
 func SeedIntel(db *intel.DB) {
-	db.Add("shopmetrics.example", intel.Entry{Category: intel.Analytics, Owner: "ShopMetrics (kuvitteellinen)", Note: "Ostokäyttäytymisen analytiikka-SDK, joka upotetaan kauppasovelluksiin", Source: "Esittelydata"})
-	db.Add("cart-tracker.example", intel.Entry{Category: intel.Analytics, Owner: "ShopMetrics (kuvitteellinen)", Note: "Verkkokauppojen seurantaskripti", Source: "Esittelydata"})
-	db.Add("channel-stats.example", intel.Entry{Category: intel.Telemetry, Owner: "Channel Stats (kuvitteellinen)", Note: "TV-katselun mittaus", Source: "Esittelydata"})
-	db.Add("upd-cdn-sync.example", intel.Entry{Category: intel.Threat, Note: "Tunnettu haittaohjelman komentopalvelin (esimerkki)", Source: "Esittelydata"})
+	db.Add("shopmetrics.example", intel.Entry{Category: intel.Analytics, Owner: "ShopMetrics (fictional)", Note: "Shopping-behaviour analytics SDK embedded in store apps", Source: "Demo data"})
+	db.Add("cart-tracker.example", intel.Entry{Category: intel.Analytics, Owner: "ShopMetrics (fictional)", Note: "Tracking script on online stores", Source: "Demo data"})
+	db.Add("channel-stats.example", intel.Entry{Category: intel.Telemetry, Owner: "Channel Stats (fictional)", Note: "TV viewing measurement", Source: "Demo data"})
+	db.Add("upd-cdn-sync.example", intel.Entry{Category: intel.Threat, Note: "Known malware command server (example)", Source: "Demo data"})
 }
 
 // Upstream answers every query with a documentation address (RFC 5737).

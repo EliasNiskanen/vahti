@@ -1,5 +1,5 @@
 [Unit]
-Description=Vahti - kotiverkon yksityisyyssuodatin
+Description=Vahti - privacy filter for the home network
 Documentation=file:///usr/local/share/doc/vahti/README.md
 After=network-online.target
 Wants=network-online.target
