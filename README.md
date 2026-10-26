@@ -75,7 +75,33 @@ Avaa http://127.0.0.1:8080 ja syötä päätteeseen tulostunut käyttöönottoko
 
 ## Kokeile Windowsilla omaa liikennettäsi
 
-Kokeellinen Windows-tila näyttää ja suodattaa sen tietokoneen liikenteen, jolla Vahti on käynnissä. Lataa julkaisusivulta `windows_amd64.zip` ja seuraa ohjetta [docs/windows.md](docs/windows.md).
+Kokeellinen Windows-tila suodattaa vain sen tietokoneen liikenteen, jolla Vahti on käynnissä. Toisin kuin esittelytilassa, näet oman koneesi oikean liikenteen: esimerkiksi Windowsin oman telemetrian sekä sivujen mainos- ja analytiikkapalvelut. Muiden kodin laitteiden suojaamiseen tarvitaan Linux-laite (ks. [Laitteisto](#laitteisto)).
+
+1. Lataa [julkaisusivulta](https://github.com/EliasNiskanen/vahti/releases) tiedosto `vahti_<versio>_windows_amd64.zip` ja pura se esimerkiksi kansioon `C:\Vahti`.
+2. Avaa PowerShell kansiossa (Shift + hiiren oikea painike kansion tyhjässä kohdassa → *Avaa PowerShell-ikkuna tässä*) ja käynnistä Vahti. Pidä ikkuna auki.
+   ```powershell
+   .\vahti.exe local
+   ```
+3. Avaa selaimessa http://127.0.0.1:8080, syötä PowerShelliin tulostunut käyttöönottokoodi ja aseta salasana.
+4. Lataa estolistat toisessa PowerShell-ikkunassa. Vahti ottaa ne käyttöön puolen minuutin kuluessa.
+   ```powershell
+   .\vahti.exe update-lists -local
+   ```
+5. Avaa PowerShell **järjestelmänvalvojana** ja ohjaa koneen nimikyselyt Vahdille. Skripti tarkistaa ensin, että Vahti vastaa, ja tallentaa nykyiset DNS-asetuksesi.
+   ```powershell
+   cd C:\Vahti
+   powershell -ExecutionPolicy Bypass -File .\kayta-vahtia.ps1
+   ```
+6. Kytke Chromen tai Edgen asetuksista *Käytä suojattua DNS:ää* pois, muuten selain ohittaa Vahdin. Firefoxissa Vahti hoitaa tämän automaattisesti.
+
+Vahdissa näkyy nyt laite *Tämä tietokone* ja sen oikea liikenne.
+
+> **Tärkeää:** Palauta DNS-asetukset aina ennen kuin suljet Vahdin. Jos Vahti ei ole käynnissä mutta koneen DNS osoittaa siihen, netti lakkaa toimimasta. Sama komento korjaa tilanteen, jos niin käy vahingossa (aja järjestelmänvalvojana):
+> ```powershell
+> powershell -ExecutionPolicy Bypass -File .\palauta-dns.ps1
+> ```
+
+Lisätietoja ja vianetsintä: [docs/windows.md](docs/windows.md).
 
 ## Asennus
 
@@ -143,8 +169,14 @@ Rakenne:
 | `internal/intel` | Seurantapalveluiden tunnistus ja omistajatiedot |
 | `internal/web` | Hallintasivu ja rajapinta: kirjautuminen, istunnot, CSRF-suojaus |
 | `deploy` | Asennusohjelma ja eristetyt systemd-palvelut |
+| `deploy/windows` | Windows-tilan PowerShell-skriptit |
+| `docs` | Turvallisuusmalli sekä Windows-, kannettava- ja julkaisuohjeet |
 
 Riippuvuuksia on tarkoituksella vähän: [miekg/dns](https://github.com/miekg/dns) sekä Go-projektin omat `golang.org/x/crypto` ja `golang.org/x/net`.
+
+## Muutokset
+
+Versiohistoria on tiedostossa [CHANGELOG.md](CHANGELOG.md).
 
 ## Tietoturva
 
