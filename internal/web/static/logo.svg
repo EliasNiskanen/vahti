@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
   <defs>
     <clipPath id="badge"><circle cx="64" cy="64" r="62"/></clipPath>
-    <clipPath id="crown"><path d="M32 58 C32 28 96 28 96 58 Z"/></clipPath>
+    <clipPath id="crown"><path d="M33 59 C31 25 97 25 95 59 Z"/></clipPath>
     <clipPath id="cape"><path d="M12 128 C14 104 32 92 50 90 L78 90 C96 92 114 104 116 128 Z"/></clipPath>
   </defs>
   <circle cx="64" cy="64" r="62" fill="#124542"/>
@@ -37,23 +37,24 @@
     <circle cx="76" cy="70" r="4.4" fill="#142120"/>
     <circle cx="53.5" cy="68.4" r="1.4" fill="#ffffff"/>
     <circle cx="77.5" cy="68.4" r="1.4" fill="#ffffff"/>
-    <path d="M45.5 63.5 C48.5 61 53.5 60.6 57 62" stroke="#124542" stroke-width="2.4" stroke-linecap="round" fill="none"/>
-    <path d="M71 60 C74.5 57.6 79.5 57.8 82.5 60.6" stroke="#124542" stroke-width="2.4" stroke-linecap="round" fill="none"/>
-    <path d="M32 58 C32 28 96 28 96 58 Z" fill="#e2a646"/>
-    <g clip-path="url(#crown)" stroke="#a46200" stroke-width=".9" opacity=".35">
-      <path d="M32 36 H96 M32 44 H96 M32 52 H96"/>
-      <path d="M36 28 V58 M44 28 V58 M52 28 V58 M60 28 V58 M68 28 V58 M76 28 V58 M84 28 V58 M92 28 V58"/>
+    <path d="M33 59 C31 25 97 25 95 59 Z" fill="#e2a646"/>
+    <g clip-path="url(#crown)" stroke="#a46200" stroke-width=".9" opacity=".4">
+      <path d="M30 34 H98 M30 40 H98 M30 46 H98 M30 52 H98"/>
+      <path d="M36 24 V60 M42 24 V60 M48 24 V60 M54 24 V60 M60 24 V60 M66 24 V60 M72 24 V60 M78 24 V60 M84 24 V60 M90 24 V60"/>
     </g>
-    <path d="M38 53 C38 40 49 32.5 59 31.5 C48 37 44.5 45 44 56 Z" fill="#f0c46a"/>
-    <path d="M64 31 V58 M48.5 35 C44.5 42 43.5 50 43.5 58 M79.5 35 C83.5 42 84.5 50 84.5 58" stroke="#a46200" stroke-width="1.6" fill="none"/>
-    <path d="M33 54 C31 46 34 39.5 40 38 C40.5 45 38.5 51 36.5 55.5 Z" fill="#c98b2a"/>
-    <path d="M95 54 C97 46 94 39.5 88 38 C87.5 45 89.5 51 91.5 55.5 Z" fill="#c98b2a"/>
-    <path d="M26 58.5 C40 52 88 52 102 58.5 C92 65 36 65 26 58.5 Z" fill="#a46200"/>
-    <path d="M30 58 C44 54.5 84 54.5 98 58" stroke="#e2a646" stroke-width="1.2" fill="none" opacity=".6"/>
-    <ellipse cx="57.5" cy="27.5" rx="5.6" ry="2.9" transform="rotate(-16 57.5 27.5)" fill="#a46200"/>
-    <ellipse cx="70.5" cy="27.5" rx="5.6" ry="2.9" transform="rotate(16 70.5 27.5)" fill="#a46200"/>
-    <path d="M62 29.5 L58.5 35 M66 29.5 L69.5 35" stroke="#a46200" stroke-width="1.8" stroke-linecap="round"/>
-    <circle cx="64" cy="29.5" r="2.7" fill="#c98b2a"/>
+    <path d="M40 52 C40 41 48 34 57 32.5 C49 37.5 46 44 46 54 Z" fill="#f0c46a"/>
+    <path d="M64 28.5 V59 M51 31 C47 38 45.5 47 45.5 59 M77 31 C81 38 82.5 47 82.5 59" stroke="#a46200" stroke-width="1.5" fill="none"/>
+    <path d="M33.5 57 C31.5 47 35 38.5 43 35.5 C46 41 46 50 44 58.5 C40 59 36 58.5 33.5 57 Z" fill="#c98b2a"/>
+    <path d="M94.5 57 C96.5 47 93 38.5 85 35.5 C82 41 82 50 84 58.5 C88 59 92 58.5 94.5 57 Z" fill="#c98b2a"/>
+    <path d="M35.5 55 C34.5 47 37 41 42.5 38 M92.5 55 C93.5 47 91 41 85.5 38" stroke="#e2a646" stroke-width=".9" stroke-dasharray="1.4 1.2" fill="none"/>
+    <path d="M43 36 C48 31 55 28 61 27 M85 36 C80 31 73 28 67 27" stroke="#a46200" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+    <path d="M38 57.5 C50 61 78 61 90 57.5 C86 62.5 75 65.5 64 65.5 C53 65.5 42 62.5 38 57.5 Z" fill="#a46200"/>
+    <path d="M43 61 C51 63.6 77 63.6 85 61 C80 63.5 72 64.6 64 64.6 C56 64.6 48 63.5 43 61 Z" fill="#7a4a00"/>
+    <path d="M39.5 58.2 C51 61.6 77 61.6 88.5 58.2" stroke="#f0c46a" stroke-width="1.2" fill="none" opacity=".8"/>
+    <path d="M44 60.6 C52 62.6 76 62.6 84 60.6" stroke="#e2a646" stroke-width=".8" stroke-dasharray="1.4 1.2" fill="none" opacity=".8"/>
+    <ellipse cx="58" cy="25" rx="5.4" ry="2.8" transform="rotate(-18 58 25)" fill="#a46200"/>
+    <ellipse cx="70" cy="25" rx="5.4" ry="2.8" transform="rotate(18 70 25)" fill="#a46200"/>
+    <circle cx="64" cy="26.5" r="2.6" fill="#c98b2a"/>
     <path d="M45.5 75.5 C42 82 41 88 43.5 94" stroke="#a46200" stroke-width="1.3" stroke-dasharray="1.6 1.4" stroke-linecap="round" fill="none"/>
     <circle cx="52" cy="70" r="8" fill="#ffffff" fill-opacity=".22" stroke="#e2a646" stroke-width="2.4"/>
     <path d="M46.6 67.2 C47.6 64.8 49.6 63.4 52 63.2" stroke="#ffffff" stroke-width="1.4" stroke-linecap="round" fill="none" opacity=".85"/>
