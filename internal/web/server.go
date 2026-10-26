@@ -38,6 +38,7 @@ type Config struct {
 	CertFP         string
 	SetupCodePath  string
 	Demo           bool
+	Local          bool // experimental single-computer mode
 	Version        string
 	Upstreams      []string
 }

@@ -190,6 +190,7 @@ function render() {
   const paused = o.pausedUntil && new Date(o.pausedUntil) > new Date();
   app.append(
     S.session.demo ? h('div', {class: 'demo-band'}, 'Esittelytila: liikenne on simuloitua, mutta kaikki säännöt ja päätökset toimivat oikean moottorin läpi.') : null,
+    S.session.local ? h('div', {class: 'demo-band'}, 'Kokeellinen paikallinen tila: Vahti suodattaa vain tämän tietokoneen liikenteen. Palauta DNS-asetus ennen kuin suljet Vahdin.') : null,
     h('header', {class: 'top'}, h('div', {class: 'wrap'},
       h('div', {class: 'bar'},
         h('div', {class: 'brand'}, shield(), 'Vahti'),
@@ -555,7 +556,7 @@ function vSettings() {
     ),
     h('div', {class: 'stack'},
       h('section', {class: 'panel'}, h('h2', {}, 'Tunnistetietokannat'),
-        h('p', {class: 'muted small'}, 'Listat ladataan vain, kun ajat komennon sudo vahti update-lists. Muuten Vahti ei ota yhteyttä mihinkään omasta aloitteestaan.'),
+        h('p', {class: 'muted small'}, 'Listat ladataan vain, kun pyydät sitä (komento update-lists). Muuten Vahti ei ota yhteyttä mihinkään omasta aloitteestaan.'),
         h('div', {class: 'rules'}, (st.lists || []).map((l) => h('div', {class: 'rule'},
           h('div', {}, h('h3', {}, l.name === 'Vahti' ? 'Sisäänrakennettu lista' : l.name), h('p', {}, l.error ? l.error : fmtNum(l.entries) + ' verkkotunnusta' + (l.category !== 'mixed' ? ' · ' + catName(l.category) : ''))),
           h('span', {class: 'pill ' + (l.error ? 'hold' : 'allow')}, l.error ? 'Ei ladattu' : 'Käytössä'))))),

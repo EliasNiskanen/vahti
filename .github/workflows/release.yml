@@ -41,6 +41,12 @@ jobs:
             cp -r docs "build/$name/"
             tar -C build --owner=0 --group=0 --mtime='2000-01-01' --sort=name -czf "dist/$name.tar.gz" "$name"
           done
+          # Windows: experimental single-computer mode
+          name="vahti_${VERSION}_windows_amd64"
+          mkdir -p "build/$name"
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o "build/$name/vahti.exe" ./cmd/vahti
+          cp deploy/windows/*.ps1 docs/windows.md README.md LICENSE "build/$name/"
+          (cd build && zip -qrX "../dist/$name.zip" "$name")
           go run github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.9.0 mod -licenses -json -output dist/vahti_${VERSION}_sbom.cdx.json
           (cd dist && sha256sum * > SHA256SUMS)
       - name: Attest build provenance

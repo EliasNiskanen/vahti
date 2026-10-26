@@ -35,7 +35,7 @@ Vahti on kevyt: ohjelma vie noin 8 Mt ja käyttää tyypillisesti alle 100 Mt mu
 | Käyttöjärjestelmä | Linux ja systemd: Raspberry Pi OS (Bookworm tai uudempi), Debian 12+ tai Ubuntu 22.04+ |
 | Käyttö | Päällä ympäri vuorokauden. Kun Vahti on kodin nimipalvelin, netti ei toimi ilman sitä. |
 
-Windows ja macOS kelpaavat vain esittelytilaan (`vahti demo`). Palveluna Vahti toimii Linuxilla.
+Palveluna, joka suojaa koko kotiverkon, Vahti toimii Linuxilla. Windowsilla on [kokeellinen tila](docs/windows.md), joka suojaa vain sen yhden tietokoneen, jolla Vahti on käynnissä. Lisäksi esittelytila (`vahti demo`) toimii kaikilla käyttöjärjestelmillä.
 
 ### Sopivat laitteet
 
@@ -72,6 +72,10 @@ go build -o vahti ./cmd/vahti
 ```
 
 Avaa http://127.0.0.1:8080 ja syötä päätteeseen tulostunut käyttöönottokoodi. Esittelytilan nimipalvelinta voi kokeilla myös suoraan: `dig @127.0.0.1 -p 5353 doubleclick.net`.
+
+## Kokeile Windowsilla omaa liikennettäsi
+
+Kokeellinen Windows-tila näyttää ja suodattaa sen tietokoneen liikenteen, jolla Vahti on käynnissä. Lataa julkaisusivulta `windows_amd64.zip` ja seuraa ohjetta [docs/windows.md](docs/windows.md).
 
 ## Asennus
 

@@ -19,6 +19,7 @@ func (s *Server) apiSession(w http.ResponseWriter, r *http.Request) {
 		"authenticated": false,
 		"setupRequired": s.eng.Admin().PasswordHash == "",
 		"demo":          s.cfg.Demo,
+		"local":         s.cfg.Local,
 		"version":       s.cfg.Version,
 	}
 	if c, err := r.Cookie(s.cookieName()); err == nil {
@@ -180,7 +181,11 @@ func (s *Server) apiOverview(w http.ResponseWriter, r *http.Request, _ string) {
 	}
 	var warnings []string
 	if listed == 0 && !s.cfg.Demo {
-		warnings = append(warnings, "Estolistoja ei ole ladattu, joten Vahti tunnistaa vain sisäänrakennetut noin 50 seurantapalvelua. Lataa listat komennolla: sudo vahti update-lists")
+		cmd := "sudo systemctl start vahti-update-lists"
+		if s.cfg.Local {
+			cmd = ".\\vahti.exe update-lists -local"
+		}
+		warnings = append(warnings, "Estolistoja ei ole ladattu, joten Vahti tunnistaa vain sisäänrakennetut noin 50 seurantapalvelua. Lataa listat komennolla: "+cmd)
 	}
 	out := map[string]any{
 		"allowed":    total.Allowed,
