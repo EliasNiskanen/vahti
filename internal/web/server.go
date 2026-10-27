@@ -24,6 +24,7 @@ import (
 
 	"github.com/EliasNiskanen/vahti/internal/engine"
 	"github.com/EliasNiskanen/vahti/internal/intel"
+	"github.com/EliasNiskanen/vahti/internal/metrics"
 	"github.com/EliasNiskanen/vahti/internal/netutil"
 )
 
@@ -41,6 +42,7 @@ type Config struct {
 	Local          bool // experimental single-computer mode
 	Version        string
 	Upstreams      []string
+	Speed          func() metrics.Snapshot // how fast DNS answers are (optional)
 }
 
 // Server is the HTTP handler.

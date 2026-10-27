@@ -12,6 +12,8 @@
     "rebindProtection": true,
     "rebindAllow": [],
     "cacheSize": 10000,
+    "serveStaleMinutes": 60,
+    "prefetch": true,
     "rateLimitQPS": 50
   },
   "web": {

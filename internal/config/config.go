@@ -36,7 +36,12 @@ type DNS struct {
 	RebindProtection bool     `json:"rebindProtection"`
 	RebindAllow      []string `json:"rebindAllow"`
 	CacheSize        int      `json:"cacheSize"`
-	RateLimitQPS     int      `json:"rateLimitQPS"`
+	// ServeStaleMinutes: for how long an expired cached answer may still be given
+	// straight away while a fresh one is fetched in the background (0 turns it off).
+	ServeStaleMinutes int `json:"serveStaleMinutes"`
+	// Prefetch refreshes popular names shortly before their cached answer expires.
+	Prefetch     bool `json:"prefetch"`
+	RateLimitQPS int  `json:"rateLimitQPS"`
 }
 
 // Web configures the management interface.
@@ -60,13 +65,15 @@ func Default() Config {
 	return Config{
 		DataDir: "/var/lib/vahti",
 		DNS: DNS{
-			Listen:           []string{":53"},
-			Upstreams:        []string{"tls://9.9.9.9:853#dns.quad9.net", "tls://149.112.112.112:853#dns.quad9.net"},
-			AllowedClients:   netutil.DefaultLocalPrefixes,
-			LocalDomains:     []string{"lan", "home.arpa", "local", "internal", "localdomain"},
-			RebindProtection: true,
-			CacheSize:        10000,
-			RateLimitQPS:     50,
+			Listen:            []string{":53"},
+			Upstreams:         []string{"tls://9.9.9.9:853#dns.quad9.net", "tls://149.112.112.112:853#dns.quad9.net"},
+			AllowedClients:    netutil.DefaultLocalPrefixes,
+			LocalDomains:      []string{"lan", "home.arpa", "local", "internal", "localdomain"},
+			RebindProtection:  true,
+			CacheSize:         10000,
+			ServeStaleMinutes: 60,
+			Prefetch:          true,
+			RateLimitQPS:      50,
 		},
 		Web: Web{
 			Listen:         ":443",
@@ -180,6 +187,9 @@ func (c *Config) Validate() error {
 	}
 	if c.DNS.CacheSize < 0 || c.DNS.RateLimitQPS < 0 || c.LogEntries < 0 {
 		return errors.New("negative sizes are not allowed")
+	}
+	if c.DNS.ServeStaleMinutes < 0 || c.DNS.ServeStaleMinutes > 1440 {
+		return errors.New("serveStaleMinutes must be between 0 and 1440 (one day)")
 	}
 	return nil
 }

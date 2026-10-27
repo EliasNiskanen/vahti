@@ -18,8 +18,12 @@ import (
 	"github.com/EliasNiskanen/vahti/internal/config"
 	"github.com/EliasNiskanen/vahti/internal/engine"
 	"github.com/EliasNiskanen/vahti/internal/intel"
+	"github.com/EliasNiskanen/vahti/internal/metrics"
 	"github.com/EliasNiskanen/vahti/internal/netutil"
 )
+
+// maxRefreshes limits how many background refreshes (serve-stale and prefetch) run at once.
+const maxRefreshes = 8
 
 // SelfCheckName is answered locally and used by the watchdog.
 const SelfCheckName = "selfcheck.vahti.invalid."
@@ -54,6 +58,10 @@ type Server struct {
 	macOf        func(netip.Addr) string
 	localAddrFor func(netip.Addr) (netip.Addr, bool)
 	now          func() time.Time
+	speed        *metrics.Recorder
+
+	refreshing sync.Map      // cache keys being refreshed in the background
+	refreshSem chan struct{} // limits concurrent background refreshes
 
 	ptrTried sync.Map
 	servers  []*dns.Server
@@ -73,7 +81,9 @@ func New(cfg config.DNS, hostnames []string, eng *engine.Engine, opt Options) (*
 		return nil, err
 	}
 	s := &Server{
-		eng: eng, db: eng.DB(), cache: newCache(cfg.CacheSize), lim: newLimiter(cfg.RateLimitQPS),
+		eng: eng, db: eng.DB(), lim: newLimiter(cfg.RateLimitQPS),
+		cache: newCache(cfg.CacheSize, time.Duration(cfg.ServeStaleMinutes)*time.Minute, cfg.Prefetch),
+		speed: metrics.New(), refreshSem: make(chan struct{}, maxRefreshes),
 		allowed: allowed, rebind: cfg.RebindProtection, hostnames: map[string]bool{},
 		macOf: opt.MACOf, localAddrFor: opt.LocalAddrFor, now: time.Now, upstream: opt.Upstream,
 	}
@@ -195,28 +205,42 @@ func (s *Server) ServeDNS(w dns.ResponseWriter, req *dns.Msg) {
 	_ = w.WriteMsg(resp)
 }
 
-// Process handles one query and returns the response, or nil to drop it.
+// Speed returns how fast Vahti has answered over the last 15 minutes.
+func (s *Server) Speed() metrics.Snapshot { return s.speed.Snapshot() }
+
+// Process handles one query and returns the response, or nil to drop it. It also
+// records how long the answer took and where it came from.
 func (s *Server) Process(client netip.Addr, req *dns.Msg) *dns.Msg {
+	start := time.Now()
+	resp, src := s.process(client, req)
+	if resp != nil {
+		s.speed.Observe(src, time.Since(start))
+	}
+	return resp
+}
+
+// process does the work of Process and also reports where the answer came from.
+func (s *Server) process(client netip.Addr, req *dns.Msg) (*dns.Msg, metrics.Source) {
 	// Never answer outside the home network: an open resolver can be abused
 	// for amplification attacks if the port is ever exposed by mistake.
 	if !s.allowed.Contains(client) {
-		return nil
+		return nil, metrics.Local
 	}
 	if !s.lim.allow(client, s.now()) {
-		return reply(req, dns.RcodeRefused)
+		return reply(req, dns.RcodeRefused), metrics.Local
 	}
 	if req.Response || len(req.Question) != 1 {
-		return reply(req, dns.RcodeFormatError)
+		return reply(req, dns.RcodeFormatError), metrics.Local
 	}
 	if req.Opcode != dns.OpcodeQuery {
-		return reply(req, dns.RcodeNotImplemented)
+		return reply(req, dns.RcodeNotImplemented), metrics.Local
 	}
 	q := req.Question[0]
 	if q.Qclass != dns.ClassINET {
-		return reply(req, dns.RcodeRefused)
+		return reply(req, dns.RcodeRefused), metrics.Local
 	}
 	if q.Qtype == dns.TypeAXFR || q.Qtype == dns.TypeIXFR || q.Qtype == dns.TypeANY {
-		return reply(req, dns.RcodeNotImplemented)
+		return reply(req, dns.RcodeNotImplemented), metrics.Local
 	}
 	fqdn := strings.ToLower(q.Name)
 	name := intel.Normalize(fqdn)
@@ -224,13 +248,13 @@ func (s *Server) Process(client netip.Addr, req *dns.Msg) *dns.Msg {
 	if fqdn == SelfCheckName {
 		m := reply(req, dns.RcodeSuccess)
 		m.Answer = append(m.Answer, &dns.TXT{Hdr: hdr(fqdn, dns.TypeTXT, 0), Txt: []string{"ok"}})
-		return m
+		return m, metrics.Local
 	}
 	if s.hostnames[name] {
-		return s.answerSelf(req, client, fqdn, q.Qtype)
+		return s.answerSelf(req, client, fqdn, q.Qtype), metrics.Local
 	}
 	if s.isLocal(name) {
-		return s.forwardLocal(req)
+		return s.forwardLocal(req), metrics.Local
 	}
 
 	devID := s.eng.Identify(client, s.macOf(client))
@@ -244,7 +268,7 @@ func (s *Server) Process(client netip.Addr, req *dns.Msg) *dns.Msg {
 	if isCanary(name) && s.eng.CategoryAction(intel.Bypass) == engine.Block {
 		s.eng.Record(engine.LogEntry{Device: devID, Domain: name, QType: qtype, Category: intel.Bypass,
 			Action: engine.Block, Reason: "Browser's own encrypted DNS is not allowed"})
-		return reply(req, dns.RcodeNameError)
+		return reply(req, dns.RcodeNameError), metrics.Blocked
 	}
 
 	m := s.db.Lookup(name)
@@ -252,14 +276,14 @@ func (s *Server) Process(client netip.Addr, req *dns.Msg) *dns.Msg {
 	le := engine.LogEntry{Device: devID, Domain: name, QType: qtype, Category: v.Category, Action: v.Action, Reason: v.Reason, Queued: v.Queued}
 	if v.Action == engine.Block {
 		s.eng.Record(le)
-		return blocked(req, fqdn, q.Qtype)
+		return blocked(req, fqdn, q.Qtype), metrics.Blocked
 	}
 
-	resp, err := s.resolve(req, fqdn)
+	resp, src, err := s.resolve(req, fqdn)
 	if err != nil {
 		le.Reason = "Upstream resolver did not answer"
 		s.eng.Record(le)
-		return reply(req, dns.RcodeServerFailure)
+		return reply(req, dns.RcodeServerFailure), metrics.Failed
 	}
 
 	// CNAME cloaking: a first-party name that points to a tracker.
@@ -278,7 +302,7 @@ func (s *Server) Process(client netip.Addr, req *dns.Msg) *dns.Msg {
 			le.Action, le.Category, le.Via = engine.Block, tv.Category, target
 			le.Reason = "Disguised tracking (CNAME)"
 			s.eng.Record(le)
-			return blocked(req, fqdn, q.Qtype)
+			return blocked(req, fqdn, q.Qtype), metrics.Blocked
 		}
 	}
 
@@ -298,39 +322,38 @@ func (s *Server) Process(client netip.Addr, req *dns.Msg) *dns.Msg {
 				le.Action = engine.Block
 				le.Reason = "Protection against attacks on the home network (DNS rebinding)"
 				s.eng.Record(le)
-				return reply(req, dns.RcodeNameError)
+				return reply(req, dns.RcodeNameError), src
 			}
 		}
 	}
 	s.eng.Record(le)
-	return resp
+	return resp, src
 }
 
-// resolve answers from cache or upstream and builds the client response.
-func (s *Server) resolve(req *dns.Msg, fqdn string) (*dns.Msg, error) {
+// resolve answers from the cache or the upstream and builds the client response. An
+// expired cached answer is given straight away and refreshed in the background
+// (serve-stale), and a popular answer about to expire is refreshed early (prefetch).
+func (s *Server) resolve(req *dns.Msg, fqdn string) (*dns.Msg, metrics.Source, error) {
 	q := req.Question[0]
 	do := false
 	if o := req.IsEdns0(); o != nil {
 		do = o.Do()
 	}
 	key := cacheKey(dns.Question{Name: fqdn, Qtype: q.Qtype, Qclass: q.Qclass}, do, req.CheckingDisabled)
-	up := s.cache.get(key)
-	if up == nil {
-		// A fresh query: no client EDNS options (e.g. client subnet) are passed on.
-		fq := new(dns.Msg)
-		fq.SetQuestion(fqdn, q.Qtype)
-		fq.RecursionDesired = true
-		fq.CheckingDisabled = req.CheckingDisabled
-		fq.SetEdns0(1232, do)
+	up, kind := s.cache.get(key)
+	src := metrics.Cache
+	switch kind {
+	case miss:
 		var err error
-		up, err = s.upstream.Exchange(fq)
-		if err != nil {
-			return nil, err
+		if up, err = s.fetch(key, fqdn, q.Qtype, do, req.CheckingDisabled); err != nil {
+			return nil, metrics.Failed, err
 		}
-		if up == nil || len(up.Question) != 1 || !strings.EqualFold(up.Question[0].Name, fqdn) || up.Question[0].Qtype != q.Qtype {
-			return nil, errors.New("upstream answered a different question")
-		}
-		s.cache.put(key, up)
+		src = metrics.Upstream
+	case stale:
+		s.refresh(key, fqdn, q.Qtype, do, req.CheckingDisabled)
+		src = metrics.Stale
+	case prefetch:
+		s.refresh(key, fqdn, q.Qtype, do, req.CheckingDisabled)
 	}
 	resp := new(dns.Msg)
 	resp.SetReply(req)
@@ -347,7 +370,53 @@ func (s *Server) resolve(req *dns.Msg, fqdn string) (*dns.Msg, error) {
 	if o := req.IsEdns0(); o != nil {
 		resp.SetEdns0(1232, do)
 	}
-	return resp, nil
+	return resp, src, nil
+}
+
+// fetch asks the upstream a fresh question, checks that the answer matches it and stores
+// it in the cache. No client EDNS options (e.g. client subnet) are passed on.
+func (s *Server) fetch(key, fqdn string, qtype uint16, do, cd bool) (*dns.Msg, error) {
+	fq := new(dns.Msg)
+	fq.SetQuestion(fqdn, qtype)
+	fq.RecursionDesired = true
+	fq.CheckingDisabled = cd
+	fq.SetEdns0(1232, do)
+	up, err := s.upstream.Exchange(fq)
+	if err != nil {
+		return nil, err
+	}
+	if up == nil || len(up.Question) != 1 || !strings.EqualFold(up.Question[0].Name, fqdn) || up.Question[0].Qtype != qtype {
+		return nil, errors.New("upstream answered a different question")
+	}
+	s.cache.put(key, up)
+	return up, nil
+}
+
+// refresh fetches a cached name again in the background. Each name is refreshed at most
+// once at a time, and at most maxRefreshes refreshes run together; extra ones are skipped
+// (the next query will try again). If the refresh fails, the old answer stays in the cache.
+func (s *Server) refresh(key, fqdn string, qtype uint16, do, cd bool) {
+	if _, busy := s.refreshing.LoadOrStore(key, true); busy {
+		return
+	}
+	select {
+	case s.refreshSem <- struct{}{}:
+	default:
+		s.refreshing.Delete(key)
+		return
+	}
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				slog.Error("dns refresh panic", "err", r)
+			}
+			<-s.refreshSem
+			s.refreshing.Delete(key)
+		}()
+		if _, err := s.fetch(key, fqdn, qtype, do, cd); err != nil {
+			slog.Debug("background refresh failed", "name", fqdn, "err", err)
+		}
+	}()
 }
 
 // answerSelf answers queries for Vahti's own name (e.g. vahti.lan) with the address the

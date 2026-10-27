@@ -6,6 +6,9 @@ All notable changes are recorded in this file. The format follows [Keep a Change
 
 ### Added
 - Logo: a watchdog in a detective's fedora and cape, with a monocle and a calabash pipe. A detailed version (`assets/logo.svg`) for 48 px and up and a simplified one (`assets/logo-small.svg`) for small sizes such as the browser tab. Used in the web interface and README, plus a social preview image (`assets/social-preview.png`).
+- Serve-stale: an expired cached answer is given straight away (with a 30-second TTL) while a fresh one is fetched in the background, for up to `dns.serveStaleMinutes` (default 60). This also keeps names working during short upstream outages.
+- Prefetch: names asked for in the last 10% of their cached lifetime are refreshed in the background before they expire (`dns.prefetch`, on by default).
+- Speed panel on the overview page: typical and slowest answer times, the share answered from the cache and the upstream lookup time over the last 15 minutes. Only timings are kept, no names or addresses.
 
 ## [0.1.0] - 2026-10-26
 

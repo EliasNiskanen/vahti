@@ -319,7 +319,30 @@ function vOverview() {
           : h('p', {class: 'muted'}, 'Nothing blocked yet.'),
         h('p', {class: 'note'}, 'Vahti sees which service a device tries to reach, but not the content of encrypted traffic. Blocking happens before the connection opens, so a blocked request never leaves your home network.')),
     ),
+    o.speed ? speedPanel(o.speed) : null,
   ];
+}
+
+// fmtMs shows a time in milliseconds with sensible precision ("0.25 ms", "18 ms", "1.2 s").
+function fmtMs(ms) {
+  if (ms >= 1000) return (ms / 1000).toLocaleString('en-GB', {maximumFractionDigits: 1}) + ' s';
+  if (ms < 1) return ms.toLocaleString('en-GB', {maximumFractionDigits: 2}) + ' ms';
+  return Math.round(ms) + ' ms';
+}
+
+// speedPanel shows how fast Vahti answered DNS queries in the last 15 minutes, so the
+// admin can see whether Vahti slows the connection down.
+function speedPanel(sp) {
+  const head = h('div', {class: 'panel-h'}, h('h2', {}, 'Speed'), h('span', {class: 'muted small'}, 'last ' + sp.minutes + ' minutes · ' + fmtNum(sp.queries) + ' answers'));
+  if (!sp.queries) return h('section', {class: 'panel'}, head, h('p', {class: 'muted'}, 'No queries in the last ' + sp.minutes + ' minutes.'));
+  return h('section', {class: 'panel'}, head,
+    h('div', {class: 'stats'},
+      stat('Typical answer', fmtMs(sp.medianMs), '', 'half of the answers'),
+      stat('Slowest answers', fmtMs(sp.p95Ms), '', '95 % were faster'),
+      stat('From cache', Math.round(sp.cachePct) + ' %', 'c-ok', 'answered instantly'),
+      stat('Upstream', sp.upstreamMs ? fmtMs(sp.upstreamMs) : '–', '', 'typical lookup')),
+    sp.failed ? h('p', {class: 'note'}, h('b', {}, fmtNum(sp.failed) + ' lookups failed '), 'because the upstream DNS server did not answer. Check the internet connection.') : null,
+    h('p', {class: 'note'}, 'Times are measured inside Vahti. Answers from the cache take well under a millisecond. Names whose cached answer has just expired are answered at once and refreshed in the background' + (sp.stale ? ' (' + fmtNum(sp.stale) + ' times)' : '') + ', and popular names are refreshed before they expire.'));
 }
 // stat builds one number tile on the home page (label, value and unit).
 function stat(label, value, cls, unit) {

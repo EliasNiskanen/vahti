@@ -183,6 +183,9 @@ The settings are in `/etc/vahti/config.json`. An unknown or invalid setting stop
 | `dns.localResolver` | The router, for local names (`.lan` etc.). If empty, local names get a "not found" answer. |
 | `dns.rebindProtection` | Stops public names from pointing into your home network (DNS rebinding). |
 | `dns.rebindAllow` | Exceptions to the above, e.g. `plex.direct`. |
+| `dns.cacheSize` | How many answers are kept in the cache. Default 10000. |
+| `dns.serveStaleMinutes` | For how long an expired cached answer is still given straight away while a fresh one is fetched in the background. Default 60, `0` turns it off. |
+| `dns.prefetch` | Refreshes popular names shortly before their cached answer expires. Default `true`. |
 | `web.hostnames` | Names the web interface can be opened with. Other names are rejected. |
 | `lists` | Blocklists to download (https only). |
 | `logEntries` | How many recent queries are kept in memory. The log is never written to disk. |
@@ -201,6 +204,7 @@ Layout:
 |---|---|
 | `cmd/vahti` | Program start-up and commands |
 | `internal/dnsserver` | The filtering DNS server: cache, encrypted forwarding, CNAME and rebinding checks |
+| `internal/metrics` | Measures how fast DNS queries are answered (shown under Speed on the overview page) |
 | `internal/engine` | Decision logic: devices, rules, queue, log |
 | `internal/intel` | Tracker recognition and ownership data |
 | `internal/web` | Web interface and API: sign-in, sessions, CSRF protection |

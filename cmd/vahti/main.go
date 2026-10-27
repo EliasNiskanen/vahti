@@ -276,6 +276,7 @@ func cmdRun(args []string, mode runMode) error {
 	webSrv, err := web.New(web.Config{
 		AllowedClients: cfg.Web.AllowedClients, Hostnames: cfg.Web.Hostnames, TLS: cfg.Web.TLS, CertFP: fp,
 		SetupCodePath: setupPath, Demo: demoMode, Local: mode == modeLocal, Version: version, Upstreams: cfg.DNS.Upstreams,
+		Speed: dnsSrv.Speed,
 	}, eng)
 	if err != nil {
 		return err

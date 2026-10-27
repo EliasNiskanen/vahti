@@ -28,6 +28,8 @@ func TestRejectsUnsafeConfig(t *testing.T) {
 		func(c *Config) { c.Lists[0].URL = "http://example.com/list" },             // not https
 		func(c *Config) { c.Lists[0].Name = "../../etc/passwd" },                   // path
 		func(c *Config) { c.DNS.AllowedClients = []string{"everything"} },
+		func(c *Config) { c.DNS.ServeStaleMinutes = -1 },
+		func(c *Config) { c.DNS.ServeStaleMinutes = 100000 },
 	}
 	for i, f := range bad {
 		c := Default()

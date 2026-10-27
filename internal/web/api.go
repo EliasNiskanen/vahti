@@ -214,6 +214,9 @@ func (s *Server) apiOverview(w http.ResponseWriter, r *http.Request, _ string) {
 		"recent":     s.logEntries(s.eng.Log(engine.LogFilter{Limit: 12})),
 		"warnings":   warnings,
 	}
+	if s.cfg.Speed != nil {
+		out["speed"] = s.cfg.Speed()
+	}
 	if time.Now().Before(st.PausedUntil) {
 		out["pausedUntil"] = st.PausedUntil
 	}
