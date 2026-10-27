@@ -10,6 +10,10 @@ All notable changes are recorded in this file. The format follows [Keep a Change
 - Prefetch: names asked for in the last 10% of their cached lifetime are refreshed in the background before they expire (`dns.prefetch`, on by default).
 - Speed panel on the overview page: typical and slowest answer times, the share answered from the cache and the upstream lookup time over the last 15 minutes. Only timings are kept, no names or addresses.
 
+### Changed
+- README rewritten as a project overview: the problem, features, screenshots, how it works, technologies, design decisions, project status and roadmap.
+- The installation, configuration and hardware details moved from the README to `docs/installation.md`, `docs/configuration.md` and `docs/hardware.md`. The hardware guide now has a parts list for a Raspberry Pi 5.
+
 ## [0.1.0] - 2026-10-26
 
 First public release. Vahti is in development and has not had an external security audit; see the README.

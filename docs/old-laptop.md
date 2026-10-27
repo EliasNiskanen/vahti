@@ -41,7 +41,7 @@ You can also do these by hand. The commands are readable in the script.
 
 ## 3. Install Vahti
 
-Download the `linux_amd64` package from the releases page and continue with the [installation steps in the README](../README.md#installation).
+Download the `linux_amd64` package from the releases page and continue with the [installation guide](installation.md).
 
 ## Good to know
 

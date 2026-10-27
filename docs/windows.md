@@ -1,6 +1,6 @@
 # Experimental Windows mode
 
-In Windows mode Vahti filters **only the computer** it runs on. You can see, for example, Windows' own telemetry and the tracking services used by your browser and programs, and block them. Protecting the other devices in your home needs Vahti on a Raspberry Pi or an old laptop (see the [README](../README.md#hardware)).
+In Windows mode Vahti filters **only the computer** it runs on. You can see, for example, Windows' own telemetry and the tracking services used by your browser and programs, and block them. Protecting the other devices in your home needs Vahti on a Raspberry Pi or an old laptop (see [hardware.md](hardware.md)).
 
 This mode is experimental: it has not yet been tested widely on real Windows computers. Please report anything that does not work.
 

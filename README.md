@@ -4,191 +4,169 @@
 
 <h1 align="center">Vahti</h1>
 
-Vahti is a privacy filter for your home network. It acts as the network's DNS server and checks every request before anything leaves your home. Advertising, analytics, device telemetry and location-tracking services are blocked by default. You decide, device by device, what may be shared and with whom.
+<p align="center">
+  A local privacy filter for the home network. It shows what your devices try to reach and lets you decide, device by device, what may leave your home.
+</p>
 
-Vahti is fully local. It has no cloud service, no user account and no remote management, and it sends no data to anyone. The only outbound connections are allowed DNS queries, forwarded encrypted to a DNS resolver, and blocklist downloads when you ask for them.
+<p align="center">
+  <a href="https://github.com/EliasNiskanen/vahti/actions/workflows/ci.yml"><img src="https://github.com/EliasNiskanen/vahti/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
+  <a href="https://github.com/EliasNiskanen/vahti/actions/workflows/codeql.yml"><img src="https://github.com/EliasNiskanen/vahti/actions/workflows/codeql.yml/badge.svg?branch=main" alt="CodeQL status"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue" alt="License: Apache 2.0"></a>
+  <img src="https://img.shields.io/badge/go-1.24-00ADD8" alt="Go 1.24">
+  <img src="https://img.shields.io/badge/status-pre--release-orange" alt="Status: pre-release">
+</p>
+
+<p align="center">
+  <img src="docs/images/overview.png" width="820" alt="Vahti's overview page in demo mode: allowed and blocked queries, live traffic per device and blocked requests by category">
+</p>
 
 *Vahti* is Finnish for "guard" or "watch".
 
 > [!IMPORTANT]
-> **Vahti is a hobby project and in development.** Do not rely on it as critical protection.
-> - No external security audit has been done.
-> - The installer has not yet been run on a real Raspberry Pi or laptop, and the Windows DNS guard has not been run on a real Windows computer. The installer is checked automatically (shellcheck), and the guard's restore logic is tested with simulated network adapters.
-> - Automated tests, staticcheck and a vulnerability check run on every change, but they are no substitute for an audit.
->
-> I maintain the project in my free time. I respond to issues and fix problems when I can, but I cannot promise a schedule. To report a security problem, see [SECURITY.md](SECURITY.md).
+> **Vahti is a hobby project in development (pre-release).** Do not rely on it as critical protection. It has not had an external security audit, and it has not yet been run on a real Raspberry Pi or Windows computer. See [Project status](#project-status) for exactly what has and has not been tested.
 
-> [!WARNING]
-> **Setting up Vahti changes your DNS settings.** Once your router or computer uses Vahti as its DNS server, the internet works only while Vahti is running. If Vahti stops, the device shuts down or its IP address changes, websites and apps stop working even though the connection itself is fine. Read [Changing and restoring DNS settings](#changing-and-restoring-dns-settings) before you start.
+## The problem
 
-## What Vahti does
+Smart TVs, robot vacuums, doorbell cameras and phone apps send data to analytics, advertising and telemetry services all the time. The owner rarely sees where the data goes, and most devices offer no way to stop it.
 
-- **Blocks tracking before the connection opens.** A blocked request never leaves your home network.
+Vahti makes that traffic visible and controllable. It acts as the home network's DNS server: before any device connects to a service, it has to ask Vahti for the service's address. Vahti checks each request against blocklists and the owner's own rules. A blocked request never leaves the home network.
+
+Everything runs on a small computer at home. Vahti has no cloud service, no user account and no remote management, and it sends no data to anyone.
+
+## Features
+
+- **Blocks tracking before the connection opens.** Advertising, analytics, telemetry and malicious destinations are blocked by default.
 - **Recognises devices** and shows what each one has tried to reach.
 - **Three modes per device:**
-  - *Open*: known tracking services are blocked, everything else works. Suits phones and computers.
-  - *Learning*: the device works freely while Vahti records the services it needs. When learning ends, the device is locked.
-  - *Locked*: only allowed destinations work. New destinations are blocked and brought to you for a decision. Suits smart devices.
-- **Approval queue:** see what a destination is linked to (owner, other addresses on the same site, other devices) and allow it once, for an hour or permanently, or block it.
-- **Share afterwards:** allow a blocked destination for a limited time from the device page.
-- **Disguised tracking detection:** if a site's own address redirects (CNAME) to a tracking service, it is blocked.
-- **Bypass protection:** browsers' own encrypted DNS and iCloud Private Relay are switched off, and known encrypted DNS services are blocked.
-- **No location hints:** Vahti does not forward your network's subnet (EDNS Client Subnet), and names inside your home network never go to the internet.
+  - *Open*: known tracking services are blocked and everything else works. Suits phones and computers.
+  - *Learning*: the device works freely for a while and Vahti records what it needs. Afterwards the device is locked.
+  - *Locked*: only allowed destinations work. New destinations wait for the owner's decision. Suits smart devices.
+- **Approval queue.** Each waiting destination shows its owner, other addresses on the same site and other devices that use it. The owner can allow it once, for an hour or permanently, or block it.
+- **Disguised tracking detection.** If a site's own address is an alias (CNAME) for a tracking service, Vahti blocks it.
+- **Bypass protection.** Browsers' own encrypted DNS and iCloud Private Relay are switched off, and known public encrypted DNS services are blocked.
+- **Fast answers.** A cache with serve-stale and prefetch answers most queries in well under a millisecond. A speed panel shows the measured answer times.
+- **Experimental Windows mode** that filters a single Windows computer and restores its DNS settings automatically.
 
-What Vahti does not do: it does not see the content of encrypted traffic or break encryption. Blocking is based on *where* a device connects. More: [docs/security-model.md](docs/security-model.md).
+<p align="center">
+  <img src="docs/images/queue.png" width="820" alt="The approval queue: a doorbell camera is trying to reach an unknown cloud service, with the site, related addresses and number of attempts, and buttons to allow once, for an hour, always, or block">
+</p>
 
-## Hardware
+## How it works
 
-Vahti is light: the program is about 8 MB and typically uses less than 100 MB of memory. Almost any always-on Linux computer will do.
+```mermaid
+flowchart LR
+    Q["Device asks:<br>address of a name?"] --> F{"Vahti: allowed for<br>this device?"}
+    F -- "No" --> B["Answer 0.0.0.0<br>Nothing leaves home.<br>Locked device: to approval queue"]
+    F -- "Yes" --> C{"In cache?"}
+    C -- "Yes" --> K["Check the answer:<br>disguised trackers,<br>home network addresses"]
+    C -- "No" --> U["Ask the upstream resolver<br>over DNS over TLS"]
+    U --> K
+    K --> A["Answer to the device"]
+```
 
-### Minimum requirements
+1. A device asks Vahti for the address of a name.
+2. Vahti identifies the device and checks the name against the device's rules, the device's mode and the blocklist categories.
+3. A blocked name gets the answer `0.0.0.0` at once, so the device never connects. If the device is locked, the name also goes to the approval queue.
+4. An allowed name is answered from the cache or forwarded to the upstream resolver over DNS over TLS. The answer is checked for disguised trackers (CNAME) and for addresses inside the home network (DNS rebinding) before it is returned.
 
-| | Requirement |
+Vahti sees *where* a device connects, not the content of encrypted traffic. It never breaks encryption. The full threat model is in [docs/security-model.md](docs/security-model.md).
+
+## Technologies
+
+| Area | What is used |
 |---|---|
-| Processor | 64-bit ARM (arm64), 32-bit ARMv7 or x86-64 (amd64) |
-| Memory | 512 MB, 1 GB or more recommended |
-| Storage | 1 GB free. A memory card is enough; an SSD lasts longer. |
-| Network | Ethernet cable to the router. Wi-Fi works but is less reliable, and the whole home's internet then depends on it. |
-| Operating system | Linux with systemd: Raspberry Pi OS (Bookworm or newer), Debian 12+ or Ubuntu 22.04+ |
-| Uptime | On around the clock. When Vahti is your home's DNS server, the internet does not work without it. |
+| Language and runtime | Go 1.24, a single static binary with no runtime dependencies (about 5,000 lines of Go plus about 1,300 lines of tests) |
+| Go libraries | [miekg/dns](https://github.com/miekg/dns) for the DNS server and client, `golang.org/x/crypto` for Argon2id password hashing, `golang.org/x/net` for the public suffix list. Everything else is the Go standard library. |
+| Protocols | DNS over UDP and TCP, DNS over TLS to the upstream resolver, EDNS(0), RFC 8767 serve-stale, HTTPS with a self-signed certificate checked by fingerprint |
+| Web interface | Plain HTML, CSS and JavaScript with no framework and no build step. The DOM is built with `createElement` only (no `innerHTML`), under a strict Content Security Policy. Embedded in the binary. |
+| Security | Argon2id passwords, `__Host-` session cookies, CSRF tokens, Origin and Sec-Fetch-Site checks, Host header checks against DNS rebinding, login throttling, per-client rate limiting, bounded memory for devices, rules and logs |
+| Linux service | systemd with sandboxing (no root, limited capabilities, read-only system), `sd_notify` watchdog, atomic state files with a backup copy, a data directory lock |
+| Windows | PowerShell module that backs up and restores DNS settings, a start-up task that restores DNS after a crash, access-controlled files in `%ProgramData%` |
+| Install scripts | POSIX shell (`install.sh`, `uninstall.sh`, `prepare-laptop.sh`) |
+| Testing | Go unit tests with the race detector, fuzz tests for the list parser and DNS handling, simulated Windows network adapters for the PowerShell restore logic |
+| CI and supply chain | GitHub Actions, gofmt, go vet, staticcheck, govulncheck, CodeQL, shellcheck, Dependabot, actions pinned by commit hash |
+| Releases | Builds for Raspberry Pi (arm64 and armv7), x86-64 Linux and Windows, SHA-256 checksums, a CycloneDX software bill of materials and signed build provenance attestations |
+| Hardware | Raspberry Pi 4 or 5, an old laptop or any always-on Linux computer ([hardware guide](docs/hardware.md)) |
 
-As a service that protects the whole home network, Vahti runs on Linux. On Windows there is an [experimental mode](docs/windows.md) that protects only the computer Vahti runs on. Demo mode (`vahti demo`) works on every operating system.
+## Design decisions
 
-### Suitable devices
+- **Local only.** Vahti never sends data about the home network anywhere. The only outbound connections are allowed DNS queries, encrypted, and blocklist downloads that the owner starts.
+- **Filter before forwarding.** The decision is made before the query reaches the internet, so a blocked name is never even looked up.
+- **Fail closed.** If Vahti stops, names stop resolving. Filtering is never bypassed silently. systemd restarts Vahti if it crashes or stops answering.
+- **Few dependencies.** Three Go modules besides the standard library, all widely used. This keeps the code that needs reviewing small.
+- **Bounded resources.** The cache, logs, device list and rules all have limits, so a misbehaving device cannot fill the memory.
+- **The log stays in memory.** Query history is never written to disk.
 
-| Device | Fit | Notes |
-|---|---|---|
-| **Raspberry Pi 4 or 5** | Excellent | Silent and low-power (about 3–7 W). The recommended choice. |
-| Raspberry Pi 3B+ | Good | Enough for a normal home. Install a 64-bit operating system. |
-| **Old laptop** | Good | Free if you already have one. The battery acts as a backup power supply during outages. See [docs/old-laptop.md](docs/old-laptop.md). |
-| Mini PC (e.g. Intel N100) | Excellent | A good choice for the future router mode, especially a model with two network ports. |
-| Old desktop | Works | Uses more power (often 30–60 W), which adds up when it runs all year. |
-| Raspberry Pi Zero 2 W | Not recommended | Wi-Fi only, no network port. |
+## Project status
 
-### Wiring
+Vahti is at version 0.1 (pre-release). The core works in demo mode and in automated tests. It has not yet been used on a real home network.
 
-In this version Vahti runs as your home's DNS server *alongside* the router:
+| Part | Status |
+|---|---|
+| Filtering DNS server, cache, serve-stale and prefetch | Done, covered by automated tests |
+| Device modes, rules and the approval queue | Done, covered by automated tests |
+| Web interface | Done, checked in demo mode in desktop and phone layouts |
+| Linux installer and systemd service | Written and checked with shellcheck, **not yet run on a real Raspberry Pi or laptop** |
+| Windows mode | Restore logic tested with simulated network adapters, **not yet run on a real Windows computer** |
+| Release pipeline | Builds, checksums and attestations work. The first release (v0.1.0) is a draft and not yet published. |
+| External security audit | Not done |
 
-```
-Internet ── modem ── router ──┬── phones, TV, computers
-                              │      (ask Vahti for names)
-                              └── Vahti (wired)
-```
+## Roadmap
 
-The device needs only one network connection. The router tells your devices that Vahti is the DNS server.
+The goal of the next steps is a package that installs and runs reliably on a Raspberry Pi 5 and that devices cannot easily get around.
 
-A future router mode will place Vahti *between* the modem and your home network, so it can see and control all traffic. That needs **two network ports**: the computer's own port and, for example, a USB network adapter. A Raspberry Pi 5 or an old laptop can do this with a USB adapter, and a two-port mini PC is ready for it out of the box.
+**1. A working package on real hardware**
+- Install and run Vahti on a Raspberry Pi 5 and on an old laptop. Fix what that reveals.
+- Run Windows mode on a real Windows computer.
+- Publish the v0.1.0 release with downloadable packages.
 
-## Try it on your computer
+**2. Detect bypasses**
+- Warn about devices that are online but never ask Vahti anything (they probably use their own DNS).
+- Detect when the router advertises its own DNS server over IPv6, which is the most common silent bypass.
+- Show devices that try to use encrypted DNS.
 
-In demo mode the traffic is simulated, but everything runs through the real filtering engine. Nothing is sent to the internet.
+**3. Router guides**
+- Step-by-step guides for common routers: send all DNS traffic (port 53) to Vahti and block encrypted DNS (port 853).
+- A check in Vahti that shows whether the redirect works.
+
+**4. Gateway mode (experimental)**
+- Vahti between the modem and the home network, with two network ports.
+- Linux nftables rules for redirecting DNS, blocking known encrypted DNS and VPN endpoints per device, and for locked devices, allowing connections only to addresses that Vahti itself has just given out. Packets are routed by the Linux kernel, not by Vahti, so the connection stays fast.
+- A setting for what happens if Vahti fails: let traffic through or stop it.
+
+**5. Towards 1.0**
+- An external security review.
+- In-place updates and backup and restore of settings.
+
+The version history is in [CHANGELOG.md](CHANGELOG.md).
+
+## Try it
+
+Demo mode runs on any computer with [Go](https://go.dev/dl/) 1.24 or newer. The traffic is simulated, but every decision runs through the real filtering engine, and nothing is sent to the internet.
 
 ```sh
+git clone https://github.com/EliasNiskanen/vahti.git
+cd vahti
 go build -o vahti ./cmd/vahti
 ./vahti demo
 ```
 
 Open http://127.0.0.1:8080 and enter the setup code printed in the terminal. You can also query the demo DNS server directly: `dig @127.0.0.1 -p 5353 doubleclick.net`.
 
-## See your own traffic on Windows
+> [!WARNING]
+> **Installing Vahti for real changes your DNS settings.** Once your router or computer uses Vahti as its DNS server, the internet works only while Vahti is running. Read [Changing and restoring DNS settings](docs/installation.md#changing-and-restoring-dns-settings) before you start.
 
-The experimental Windows mode filters only the computer Vahti runs on. Unlike demo mode, you see your computer's real traffic: for example Windows' own telemetry and the advertising and analytics services on websites. Protecting the other devices in your home needs a Linux device (see [Hardware](#hardware)).
+## Documentation
 
-1. Download `vahti_<version>_windows_amd64.zip` from the [releases page](https://github.com/EliasNiskanen/vahti/releases) and extract it, for example to `C:\Vahti`.
-2. Open PowerShell in the folder (Shift + right-click on an empty spot in the folder → *Open PowerShell window here*) and start Vahti:
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File .\start-vahti.ps1
-   ```
-   Vahti opens in its own window, and Windows asks for permission to change the DNS settings. Accept.
-3. Open http://127.0.0.1:8080 in your browser, enter the setup code shown in the Vahti window and set a password.
-4. Download the blocklists: `.\vahti.exe update-lists -local`
-5. In Chrome or Edge, turn off *Use secure DNS*, otherwise the browser bypasses Vahti.
-
-**To stop:** close the Vahti window. **DNS settings are restored automatically**, also if Vahti crashes. If the computer shuts down in the middle, the settings are restored at the next startup.
-
-**To check** at any time whether your settings are normal:
-```powershell
-powershell -ExecutionPolicy Bypass -File .\check-dns.ps1
-```
-
-More details, troubleshooting and how the restore works: [docs/windows.md](docs/windows.md).
-
-## Installation
-
-These steps are written for a Raspberry Pi, but they work the same on any Linux computer. If you use an old laptop, do the [laptop preparation](docs/old-laptop.md) first. Connect the device to your router with a network cable.
-
-1. Download the package for your device and the `SHA256SUMS` file from the [releases page](https://github.com/EliasNiskanen/vahti/releases):
-   - Raspberry Pi 3/4/5 (64-bit operating system): `linux_arm64`
-   - Raspberry Pi, 32-bit operating system: `linux_armv7`
-   - Laptop, mini PC or desktop: `linux_amd64`
-2. Check that the download is genuine:
-   ```sh
-   sha256sum --check --ignore-missing SHA256SUMS
-   gh attestation verify vahti_*_linux_*.tar.gz --repo EliasNiskanen/vahti
-   ```
-   The second command proves the package was built on GitHub from this source code.
-3. Extract and install:
-   ```sh
-   tar xzf vahti_*_linux_*.tar.gz
-   cd vahti_*_linux_*/
-   sudo ./install.sh
-   ```
-4. Open the address shown at the end of the installation and enter the setup code. The browser warns about a self-signed certificate. Check that the fingerprint matches the one the installer printed, then accept it.
-5. In your router settings, give the Vahti device a fixed IP address.
-6. In the router's DHCP settings, **set the DNS server to the Vahti device's address**. Use only this one address: a secondary server would bypass Vahti.
-7. Turn Wi-Fi off and on again on your devices so they pick up the new setting.
-
-### Good to know
-
-- **IPv6:** If your router hands out IPv6 addresses, it may advertise its own DNS server over IPv6. Turn off IPv6 DNS advertisement in the router or set Vahti's IPv6 address.
-- **Local device names:** To show the device names your router knows, set `localResolver` in `/etc/vahti/config.json` to the router's address, e.g. `"192.168.1.1:53"`.
-- **If Vahti stops, the internet stops.** This is intentional: filtering is never bypassed silently. systemd restarts Vahti automatically if it crashes or DNS stops answering for 30 seconds. In an emergency, restore the router's DNS setting.
-- **Forgotten password:** `sudo systemctl stop vahti && sudo vahti reset-admin && sudo systemctl start vahti`
-- **Blocklists:** `sudo systemctl start vahti-update-lists` downloads the lists now. The installer can turn on weekly updates.
-
-## Monitoring other people's traffic
-
-Vahti sees which services the devices in your home connect to. If other people use those devices, tell them about Vahti: what it sees, what it blocks and who can open the web interface. Vahti's log is kept only in the device's memory and is never sent anywhere.
-
-In your own home Vahti is your own tool. At workplaces, in shared flats, on tenants' networks and on other shared networks, the rules on the confidentiality of communications are stricter. Find out in advance whether you may monitor other people's traffic and how you must tell them about it. This is not legal advice.
-
-## Changing and restoring DNS settings
-
-Vahti only works if devices ask it for names. That is why setting it up changes the DNS settings of either your router (the whole home) or one computer (Windows mode). This makes Vahti an essential part of your network.
-
-**Before the change**
-- **Write down the original settings.** Take a screenshot of the router's DHCP or DNS settings page before you change anything. Usually DNS is automatic, which means the router uses your internet provider's DNS servers.
-- **Check that Vahti answers.** Open the web interface and make sure traffic appears before you change the settings for the whole home.
-- **Tell the people you live with.** If the internet stops working, they should know what might cause it and whom to call.
-- **Make sure you can reach the router's settings without DNS.** The router's address is usually an IP address such as `192.168.1.1`, which works even when DNS does not. Keep the address and the router password at hand.
-
-**Do not add a secondary server.** If you give the router a second DNS server next to Vahti, devices will use it from time to time and tracking gets past Vahti.
-
-**If the internet stops working**
-1. **Check Vahti.** On Linux: `systemctl status vahti`. On Windows: is the `vahti.exe local` window open?
-2. **Restore the settings if you cannot get Vahti working right away:**
-   - **Whole home (router):** open the router's settings by IP address (e.g. http://192.168.1.1), go to the DHCP or LAN settings and set the DNS server back to *automatic* or to the original addresses you wrote down. Turn Wi-Fi off and on again on your devices so they pick up the setting.
-   - **Windows mode:** the settings are normally restored automatically when Vahti is closed. Check with `check-dns.ps1`. If they were not restored, run as administrator `powershell -ExecutionPolicy Bypass -File .\restore-dns.ps1`. Without the script: *Settings → Network & Internet → Wi-Fi or Ethernet → connection properties → DNS server assignment → Edit → Automatic (DHCP)*.
-
-**Removing Vahti:** always restore your DNS settings *before* you remove Vahti or shut the device down for good. The uninstaller (`uninstall.sh`) reminds you of this.
-
-## Configuration
-
-The settings are in `/etc/vahti/config.json`. An unknown or invalid setting stops Vahti from starting and is reported in the log (`journalctl -u vahti`), so a typo never goes unnoticed.
-
-| Setting | Meaning |
+| Guide | Contents |
 |---|---|
-| `dns.upstreams` | DNS servers for allowed queries. Quad9 over DNS over TLS by default. Format: `tls://ip:853#name`. |
-| `dns.allowedClients` | Addresses whose queries are answered. By default only private home network addresses. |
-| `dns.localResolver` | The router, for local names (`.lan` etc.). If empty, local names get a "not found" answer. |
-| `dns.rebindProtection` | Stops public names from pointing into your home network (DNS rebinding). |
-| `dns.rebindAllow` | Exceptions to the above, e.g. `plex.direct`. |
-| `dns.cacheSize` | How many answers are kept in the cache. Default 10000. |
-| `dns.serveStaleMinutes` | For how long an expired cached answer is still given straight away while a fresh one is fetched in the background. Default 60, `0` turns it off. |
-| `dns.prefetch` | Refreshes popular names shortly before their cached answer expires. Default `true`. |
-| `web.hostnames` | Names the web interface can be opened with. Other names are rejected. |
-| `lists` | Blocklists to download (https only). |
-| `logEntries` | How many recent queries are kept in memory. The log is never written to disk. |
+| [Installation](docs/installation.md) | Installing on Linux, changing and restoring DNS settings, monitoring other people's traffic |
+| [Hardware](docs/hardware.md) | Requirements, suitable devices and a parts list for a Raspberry Pi 5 |
+| [Old laptop](docs/old-laptop.md) | Preparing an old laptop to run Vahti around the clock |
+| [Windows mode](docs/windows.md) | Filtering one Windows computer, and how DNS is restored |
+| [Configuration](docs/configuration.md) | All settings in `/etc/vahti/config.json` |
+| [Security model](docs/security-model.md) | What Vahti protects against and what it does not |
+| [Publishing](docs/publishing.md) | Repository settings and release steps |
 
 ## Development
 
@@ -198,32 +176,26 @@ make check    # tests, go vet and formatting
 make pi       # build for Raspberry Pi
 ```
 
-Layout:
-
 | Folder | Contents |
 |---|---|
-| `cmd/vahti` | Program start-up and commands |
+| `cmd/vahti` | Program start-up and commands (`run`, `demo`, `local`, `update-lists`, `reset-admin`) |
 | `internal/dnsserver` | The filtering DNS server: cache, encrypted forwarding, CNAME and rebinding checks |
-| `internal/metrics` | Measures how fast DNS queries are answered (shown under Speed on the overview page) |
-| `internal/engine` | Decision logic: devices, rules, queue, log |
-| `internal/intel` | Tracker recognition and ownership data |
+| `internal/engine` | Decision logic: devices, rules, approval queue, log |
+| `internal/intel` | Tracker recognition and ownership data, blocklist parsing |
+| `internal/metrics` | Answer time measurements for the speed panel |
 | `internal/web` | Web interface and API: sign-in, sessions, CSRF protection |
 | `deploy` | Installer and sandboxed systemd services |
 | `deploy/windows` | PowerShell scripts for Windows mode |
-| `docs` | Security model and guides for Windows, old laptops and publishing |
-
-Dependencies are deliberately few: [miekg/dns](https://github.com/miekg/dns) and the Go project's own `golang.org/x/crypto` and `golang.org/x/net`.
-
-## Changes
-
-The version history is in [CHANGELOG.md](CHANGELOG.md).
+| `docs` | Guides and the security model |
 
 ## Security
 
-Found a vulnerability? Do not open a public issue; see [SECURITY.md](SECURITY.md).
+Found a vulnerability? Do not open a public issue. See [SECURITY.md](SECURITY.md).
 
 ## License
 
 Apache License 2.0. The software is provided as is, without warranty (see [LICENSE](LICENSE)).
 
 The blocklists have their own licenses: StevenBlack/hosts (MIT) and URLhaus (CC0). If you add lists, check their terms. Some tracker databases allow only non-commercial use.
+
+The project is maintained by [Elias Niskanen](https://github.com/EliasNiskanen) in his free time. Issues are answered and problems fixed when possible, without a promised schedule.
