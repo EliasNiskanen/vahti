@@ -50,7 +50,7 @@ jobs:
           go run github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.9.0 mod -licenses -json -output dist/vahti_${VERSION}_sbom.cdx.json
           (cd dist && sha256sum * > SHA256SUMS)
       - name: Attest build provenance
-        uses: actions/attest-build-provenance@c074443f1aee8d4aeeae555aebba3282517141b2 # v2.2.3
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-path: "dist/*"
       - name: Publish release
