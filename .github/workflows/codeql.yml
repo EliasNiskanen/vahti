@@ -31,7 +31,7 @@ jobs:
         if: matrix.language == 'go'
         with:
           go-version-file: go.mod
-      - uses: github/codeql-action/init@1b549b9259bda1cb5ddde3b41741a82a2d15a841 # v3.28.13
+      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           languages: ${{ matrix.language }}
           queries: security-extended
